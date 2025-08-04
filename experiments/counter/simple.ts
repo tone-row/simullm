@@ -1,4 +1,4 @@
-import { runSimulation, createNode, createSyncAction } from "../../lib/simulation.ts";
+import { runSimulation, createNode, createAction } from "../../lib/simulation.ts";
 
 // Example: Simple counter simulation
 interface CounterState {
@@ -7,19 +7,19 @@ interface CounterState {
 }
 
 // Create some simple actions
-const incrementAction = createSyncAction<CounterState>((state) => ({
+const incrementAction = createAction<CounterState>((state) => ({
   ...state,
   value: state.value + 1,
   history: [...state.history, state.value + 1],
 }));
 
-const doubleAction = createSyncAction<CounterState>((state) => ({
+const doubleAction = createAction<CounterState>((state) => ({
   ...state,
   value: state.value * 2,
   history: [...state.history, state.value * 2],
 }));
 
-const resetAction = createSyncAction<CounterState>((state) => ({
+const resetAction = createAction<CounterState>((state) => ({
   ...state,
   value: 0,
   history: [...state.history, 0],

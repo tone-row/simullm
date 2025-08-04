@@ -73,15 +73,8 @@ export const createNode = <TState>(
 });
 
 /**
- * Utility to create a synchronous action
+ * Utility to create an action (works with both sync and async functions)
  */
-export const createSyncAction = <TState>(
-  action: (state: TState) => TState
-): Action<TState> => action;
-
-/**
- * Utility to create an asynchronous action
- */
-export const createAsyncAction = <TState>(
-  action: (state: TState) => Promise<TState>
+export const createAction = <TState>(
+  action: (state: TState) => TState | Promise<TState>
 ): Action<TState> => action;

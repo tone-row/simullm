@@ -35,7 +35,7 @@ Here's the simplest possible simulation - a counter that increments:
 import {
   runSimulation,
   createNode,
-  createSyncAction,
+  createAction,
 } from "./lib/simulation.ts";
 
 // 1. Define the global state of your simulation
@@ -44,7 +44,7 @@ interface CounterState {
 }
 
 // 2. Create an action that modifies the state
-const increment = createSyncAction<CounterState>((state) => ({
+const increment = createAction<CounterState>((state) => ({
   count: state.count + 1,
 }));
 
@@ -72,7 +72,7 @@ Here's a simple ecosystem with rabbits and grass:
 import {
   runSimulation,
   createNode,
-  createSyncAction,
+  createAction,
 } from "./lib/simulation.ts";
 
 interface EcosystemState {
@@ -81,7 +81,7 @@ interface EcosystemState {
 }
 
 // Rabbits eat grass and reproduce
-const rabbitAction = createSyncAction<EcosystemState>((state) => {
+const rabbitAction = createAction<EcosystemState>((state) => {
   const grassEaten = Math.min(state.rabbits, state.grass);
   const newRabbits = state.rabbits + Math.floor(grassEaten * 0.5);
 
@@ -92,7 +92,7 @@ const rabbitAction = createSyncAction<EcosystemState>((state) => {
 });
 
 // Grass regrows
-const grassAction = createSyncAction<EcosystemState>((state) => ({
+const grassAction = createAction<EcosystemState>((state) => ({
   ...state,
   grass: state.grass + 2,
 }));
@@ -155,8 +155,7 @@ See `experiments/market/boom-bust.ts` for an example of using LLMs as trading ag
 
 - `runSimulation(config)` - Execute a complete simulation
 - `createNode(id, action)` - Create an agent node
-- `createSyncAction(fn)` - Create synchronous action
-- `createAsyncAction(fn)` - Create asynchronous action (for LLM calls)
+- `createAction(fn)` - Create action (works with both sync and async functions)
 
 ### Key Types
 

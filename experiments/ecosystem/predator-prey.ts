@@ -1,4 +1,4 @@
-import { runSimulation, createNode, createSyncAction } from "../../lib/simulation.ts";
+import { runSimulation, createNode, createAction } from "../../lib/simulation.ts";
 
 // Example: Simple predator-prey ecosystem
 interface EcosystemState {
@@ -14,7 +14,7 @@ interface EcosystemState {
 }
 
 // Rabbit behavior: reproduce and eat grass
-const rabbitAction = createSyncAction<EcosystemState>((state) => {
+const rabbitAction = createAction<EcosystemState>((state) => {
   const newRabbits = Math.floor(state.rabbits * 1.2); // 20% growth rate
   const grassEaten = Math.min(newRabbits * 0.5, state.grass); // Each rabbit eats 0.5 grass
   const newGrass = Math.max(0, state.grass - grassEaten);
@@ -32,7 +32,7 @@ const rabbitAction = createSyncAction<EcosystemState>((state) => {
 });
 
 // Fox behavior: hunt rabbits and reproduce
-const foxAction = createSyncAction<EcosystemState>((state) => {
+const foxAction = createAction<EcosystemState>((state) => {
   const rabbitsCaught = Math.min(Math.floor(state.foxes * 0.8), state.rabbits); // Each fox catches 0.8 rabbits
   const newRabbits = Math.max(0, state.rabbits - rabbitsCaught);
   const newFoxes = Math.floor(state.foxes * (1 + rabbitsCaught * 0.1)); // Foxes grow based on food
@@ -50,7 +50,7 @@ const foxAction = createSyncAction<EcosystemState>((state) => {
 });
 
 // Grass behavior: regrow
-const grassAction = createSyncAction<EcosystemState>((state) => {
+const grassAction = createAction<EcosystemState>((state) => {
   const newGrass = Math.min(100, state.grass * 1.1); // 10% growth, max 100
 
   return {

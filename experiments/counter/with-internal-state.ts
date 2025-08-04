@@ -1,7 +1,7 @@
 import {
   runSimulationWithInternalState,
   createNodeWithInternalState,
-  createSyncActionWithInternalState,
+  createActionWithInternalState,
 } from "../../lib/simulation-with-internal-state.ts";
 
 // Example: Agents with memory/learning capabilities
@@ -17,7 +17,7 @@ interface AgentInternalState {
 }
 
 // Agent that remembers previous actions and learns
-const learningAgentAction = createSyncActionWithInternalState<
+const learningAgentAction = createActionWithInternalState<
   GlobalState,
   AgentInternalState
 >((globalState, internalState) => {
@@ -44,7 +44,7 @@ const learningAgentAction = createSyncActionWithInternalState<
 });
 
 // Agent that gets tired over time
-const tiredAgentAction = createSyncActionWithInternalState<
+const tiredAgentAction = createActionWithInternalState<
   GlobalState,
   AgentInternalState
 >((globalState, internalState) => {

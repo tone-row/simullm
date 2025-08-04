@@ -83,21 +83,11 @@ export const createNodeWithInternalState = <TState, TInternalState>(
 });
 
 /**
- * Utility to create a synchronous action with internal state
+ * Utility to create an action with internal state (works with both sync and async functions)
  */
-export const createSyncActionWithInternalState = <TState, TInternalState>(
+export const createActionWithInternalState = <TState, TInternalState>(
   action: (
     globalState: TState,
     internalState: TInternalState
-  ) => { globalState: TState; internalState: TInternalState }
-): ActionWithInternalState<TState, TInternalState> => action;
-
-/**
- * Utility to create an asynchronous action with internal state
- */
-export const createAsyncActionWithInternalState = <TState, TInternalState>(
-  action: (
-    globalState: TState,
-    internalState: TInternalState
-  ) => Promise<{ globalState: TState; internalState: TInternalState }>
+  ) => { globalState: TState; internalState: TInternalState } | Promise<{ globalState: TState; internalState: TInternalState }>
 ): ActionWithInternalState<TState, TInternalState> => action;

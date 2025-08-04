@@ -2,8 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   runSimulation,
   createNode,
-  createSyncAction,
-  createAsyncAction,
+  createAction,
   createSimulationState,
   executeTurn,
 } from "./simulation.ts";
@@ -27,8 +26,8 @@ describe("ABM Framework", () => {
 
   describe("executeTurn", () => {
     it("should execute a single turn with sync actions", async () => {
-      const incrementAction = createSyncAction<number>((state) => state + 1);
-      const doubleAction = createSyncAction<number>((state) => state * 2);
+      const incrementAction = createAction<number>((state) => state + 1);
+      const doubleAction = createAction<number>((state) => state * 2);
 
       const nodes = [
         createNode("increment", incrementAction),
@@ -48,7 +47,7 @@ describe("ABM Framework", () => {
     });
 
     it("should execute a single turn with async actions", async () => {
-      const asyncIncrementAction = createAsyncAction<number>(async (state) => {
+      const asyncIncrementAction = createAction<number>(async (state) => {
         await new Promise((resolve) => setTimeout(resolve, 1)); // Simulate async work
         return state + 1;
       });
@@ -69,7 +68,7 @@ describe("ABM Framework", () => {
 
   describe("runSimulation", () => {
     it("should run a complete simulation with multiple turns", async () => {
-      const incrementAction = createSyncAction<number>((state) => state + 1);
+      const incrementAction = createAction<number>((state) => state + 1);
       const nodes = [createNode("increment", incrementAction)];
 
       const config: SimulationConfig<number> = {
@@ -86,7 +85,7 @@ describe("ABM Framework", () => {
     });
 
     it("should respect maxTurns limit", async () => {
-      const incrementAction = createSyncAction<number>((state) => state + 1);
+      const incrementAction = createAction<number>((state) => state + 1);
       const nodes = [createNode("increment", incrementAction)];
 
       const config: SimulationConfig<number> = {
@@ -102,7 +101,7 @@ describe("ABM Framework", () => {
     });
 
     it("should use default maxTurns when not specified", async () => {
-      const incrementAction = createSyncAction<number>((state) => state + 1);
+      const incrementAction = createAction<number>((state) => state + 1);
       const nodes = [createNode("increment", incrementAction)];
 
       const config: SimulationConfig<number> = {
@@ -120,7 +119,7 @@ describe("ABM Framework", () => {
 
   describe("utility functions", () => {
     it("should create nodes correctly", () => {
-      const action = createSyncAction<number>((state) => state + 1);
+      const action = createAction<number>((state) => state + 1);
       const node = createNode("test-node", action);
 
       expect(node.id).toBe("test-node");
@@ -128,14 +127,14 @@ describe("ABM Framework", () => {
     });
 
     it("should create sync actions correctly", () => {
-      const action = createSyncAction<number>((state) => state * 2);
+      const action = createAction<number>((state) => state * 2);
       const result = action(5);
 
       expect(result).toBe(10);
     });
 
     it("should create async actions correctly", async () => {
-      const action = createAsyncAction<number>(async (state) => {
+      const action = createAction<number>(async (state) => {
         await new Promise((resolve) => setTimeout(resolve, 1));
         return state * 3;
       });
