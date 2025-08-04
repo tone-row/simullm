@@ -2,7 +2,7 @@ import {
   runSimulationWithInternalState,
   createNodeWithInternalState,
   createSyncActionWithInternalState,
-} from "./simulation-with-internal-state.ts";
+} from "../../lib/simulation-with-internal-state.ts";
 
 // Example: Agents with memory/learning capabilities
 interface GlobalState {

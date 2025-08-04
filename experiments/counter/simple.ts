@@ -1,4 +1,4 @@
-import { runSimulation, createNode, createSyncAction } from "./simulation.ts";
+import { runSimulation, createNode, createSyncAction } from "../../lib/simulation.ts";
 
 // Example: Simple counter simulation
 interface CounterState {

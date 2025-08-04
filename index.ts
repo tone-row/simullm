@@ -1,6 +1,6 @@
-// import { runCounterExample } from "./src/example.ts";
-// import { runEcosystemExample } from "./src/ecosystem-example.ts";
-import { runBoomBustExperiment } from "./src/boom-bust-experiment.ts";
+// import { runCounterExample } from "./experiments/counter/simple.ts";
+// import { runEcosystemExample } from "./experiments/ecosystem/predator-prey.ts";
+import { runBoomBustExperiment } from "./experiments/market/boom-bust.ts";
 import { writeFileSync } from "fs";
 
 console.log("ABM Framework Demo");
