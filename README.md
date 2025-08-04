@@ -1,132 +1,194 @@
 # Agent-Based Modeling Framework
 
-A simple, functional, and strongly-typed framework for agent-based modeling in TypeScript.
+A TypeScript framework for creating agent-based simulations with support for LLM-powered agents.
 
-## Features
+## Quick Start
 
-- **Functional approach**: No classical OOP, pure functions and immutable state
-- **Strongly typed**: Full TypeScript support with generic state types
-- **Async support**: Actions can be synchronous or asynchronous
-- **Simple API**: Easy to create nodes and run simulations
-- **Testable**: Built-in testing with bun:test
+```bash
+# Install dependencies
+bun install
 
-## Core Concepts
-
-### Node
-
-A node represents an agent in the simulation. Each node has:
-
-- `id`: Unique identifier
-- `action`: A function that takes the current state and returns a new state
-
-### Action
-
-An action is a function that transforms the simulation state:
-
-```typescript
-type Action<TState> = (state: TState) => Promise<TState> | TState;
+# Run tests
+bun test
 ```
 
-### Simulation
+## How Simulations Work
 
-A simulation runs for a specified number of turns, executing each node's action in sequence.
+Every simulation follows these steps:
 
-## Usage
+1. **Define State** - What data your simulation tracks
+2. **Create Actions** - Functions that modify the state
+3. **Create Nodes** - Agents that perform actions
+4. **Configure & Run** - Set initial conditions and execute
 
-### Basic Example
+Each simulation turn:
+
+- Executes all node actions sequentially
+- Each action receives current state, returns new state
+- State is immutable - actions return modified copies
+
+## Your First Simulation
+
+Here's the simplest possible simulation - a counter that increments:
 
 ```typescript
 import {
   runSimulation,
   createNode,
   createSyncAction,
-} from "./src/simulation.ts";
+} from "./lib/simulation.ts";
 
-// Define your state type
-interface MyState {
-  value: number;
+// 1. Define the global state of your simulation
+interface CounterState {
+  count: number;
 }
 
-// Create actions
-const incrementAction = createSyncAction<MyState>((state) => ({
-  ...state,
-  value: state.value + 1,
+// 2. Create an action that modifies the state
+const increment = createSyncAction<CounterState>((state) => ({
+  count: state.count + 1,
 }));
 
-const doubleAction = createSyncAction<MyState>((state) => ({
-  ...state,
-  value: state.value * 2,
-}));
+// 3. Create a node (agent) that performs the action
+const incrementNode = createNode("increment", increment);
 
-// Create nodes
-const incrementNode = createNode("increment", incrementAction);
-const doubleNode = createNode("double", doubleAction);
-
-// Run simulation
+// 4. Configure and run the simulation
 const result = await runSimulation({
-  initialState: { value: 1 },
-  nodes: [incrementNode, doubleNode],
+  initialState: { count: 0 },
+  nodes: [incrementNode],
+  maxTurns: 3,
+});
+
+console.log(result.finalState.count); // 3
+console.log(result.turnHistory); // Full history: [{count:0}, {count:1}, {count:2}, {count:3}]
+```
+
+**Result**: Counter goes 0 → 1 → 2 → 3 over 3 turns.
+
+## Multi-Agent Example
+
+Here's a simple ecosystem with rabbits and grass:
+
+```typescript
+import {
+  runSimulation,
+  createNode,
+  createSyncAction,
+} from "./lib/simulation.ts";
+
+interface EcosystemState {
+  rabbits: number;
+  grass: number;
+}
+
+// Rabbits eat grass and reproduce
+const rabbitAction = createSyncAction<EcosystemState>((state) => {
+  const grassEaten = Math.min(state.rabbits, state.grass);
+  const newRabbits = state.rabbits + Math.floor(grassEaten * 0.5);
+
+  return {
+    rabbits: newRabbits,
+    grass: Math.max(0, state.grass - grassEaten),
+  };
+});
+
+// Grass regrows
+const grassAction = createSyncAction<EcosystemState>((state) => ({
+  ...state,
+  grass: state.grass + 2,
+}));
+
+// Create nodes and run
+const result = await runSimulation({
+  initialState: { rabbits: 2, grass: 10 },
+  nodes: [
+    createNode("rabbits", rabbitAction),
+    createNode("grass", grassAction),
+  ],
   maxTurns: 5,
 });
 
-console.log(result.finalState.value); // Final state after 5 turns
+// Print results
+result.turnHistory.forEach((state, turn) => {
+  console.log(`Turn ${turn}: Rabbits=${state.rabbits}, Grass=${state.grass}`);
+});
 ```
 
-### Ecosystem Example
+This creates population dynamics where rabbits consume grass to reproduce while grass regrows each turn.
 
-The framework includes a predator-prey ecosystem simulation demonstrating more complex interactions:
+## Project Structure
+
+```
+lib/                           # Core framework
+├── simulation.ts              # Main simulation engine
+├── types.ts                   # Type definitions
+├── simulation-with-internal-state.ts   # Extended version with node-internal state
+└── types-with-internal-state.ts        # Extended types
+
+experiments/                   # Example simulations
+├── counter/                   # Simple counter examples
+├── ecosystem/                 # Predator-prey dynamics
+└── market/                    # Economic boom-bust cycles with LLMs
+```
+
+## Advanced Features
+
+### Internal Node State
+
+For complex agents that need memory, use the extended framework:
 
 ```typescript
-import { runEcosystemExample } from "./src/ecosystem-example.ts";
-
-await runEcosystemExample();
+import {
+  runSimulationWithInternalState,
+  createNodeWithInternalState,
+} from "./lib/simulation-with-internal-state.ts";
 ```
+
+This allows each node to maintain private state separate from the global simulation state.
+
+### LLM Integration
+
+See `experiments/market/boom-bust.ts` for an example of using LLMs as trading agents that make decisions based on market conditions.
 
 ## API Reference
 
 ### Core Functions
 
-- `createNode(id: string, action: Action<TState>)`: Creates a new node
-- `createSyncAction(action: (state: TState) => TState)`: Creates a synchronous action
-- `createAsyncAction(action: (state: TState) => Promise<TState>)`: Creates an asynchronous action
-- `runSimulation(config: SimulationConfig<TState>)`: Runs a complete simulation
-- `executeTurn(state: SimulationState<TState>)`: Executes a single turn
+- `runSimulation(config)` - Execute a complete simulation
+- `createNode(id, action)` - Create an agent node
+- `createSyncAction(fn)` - Create synchronous action
+- `createAsyncAction(fn)` - Create asynchronous action (for LLM calls)
 
-### Types
+### Key Types
 
-- `Node<TState>`: Represents an agent with an ID and action
-- `Action<TState>`: Function that transforms state
-- `SimulationConfig<TState>`: Configuration for running a simulation
-- `SimulationResult<TState>`: Result of a completed simulation
+- `Action<TState>` - Function that transforms state: `(state: TState) => TState | Promise<TState>`
+- `Node<TState>` - Agent with `id` and `action`
+- `SimulationConfig<TState>` - `{ initialState, nodes, maxTurns? }`
+- `SimulationResult<TState>` - `{ finalState, turnHistory, totalTurns }`
 
-## Running
+## Creating Your Own Simulation
+
+1. **Design your state interface** - What variables define your system?
+2. **Identify agents** - What entities act in your simulation?
+3. **Define actions** - How does each agent modify the state?
+4. **Set parameters** - Initial conditions and run length
+5. **Analyze results** - Use `turnHistory` to track dynamics over time
+
+Look at files in `experiments/` for patterns and inspiration.
+
+## Examples
+
+- **Simple Counter** (`experiments/counter/simple.ts`) - Basic state modification
+- **Ecosystem** (`experiments/ecosystem/predator-prey.ts`) - Multi-agent interactions
+- **Market Simulation** (`experiments/market/boom-bust.ts`) - LLM-powered economic agents
+
+## Running Examples
 
 ```bash
-# Run the demo
-bun run index.ts
+# Run specific example
+bun run experiments/counter/simple.ts
 
 # Run tests
-bun test
-
-# Run specific test file
-bun test src/simulation.test.ts
+bun test lib/simulation.test.ts
 ```
 
-## Future Enhancements
-
-This is a foundation that can be extended with:
-
-- Spatial relationships between agents
-- More complex interaction patterns
-- Visualization tools
-- Performance optimizations
-- Classic ABM paper reimplementations
-
-## Architecture
-
-The framework follows a functional approach:
-
-- Immutable state transformations
-- Pure functions for actions
-- Composition over inheritance
-- Strong typing throughout
+The framework is designed to be simple yet extensible - start with basic examples and gradually add complexity as needed for your research.
