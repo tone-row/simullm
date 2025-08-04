@@ -1,5 +1,6 @@
 import type {
   Action,
+  ActionParams,
   Node,
   SimulationConfig,
   SimulationResult,
@@ -9,9 +10,9 @@ import type {
 /**
  * Creates a new simulation state
  */
-export const createSimulationState = <TState>(
-  config: SimulationConfig<TState>
-): SimulationState<TState> => ({
+export const createSimulationState = <TGlobalState>(
+  config: SimulationConfig<TGlobalState>
+): SimulationState<TGlobalState> => ({
   nodes: config.nodes,
   state: config.initialState,
   turn: 0,
@@ -20,20 +21,41 @@ export const createSimulationState = <TState>(
 /**
  * Executes a single turn of the simulation
  */
-export const executeTurn = async <TState>(
-  simulationState: SimulationState<TState>
-): Promise<SimulationState<TState>> => {
-  let currentState = simulationState.state;
+export const executeTurn = async <TGlobalState>(
+  simulationState: SimulationState<TGlobalState>
+): Promise<SimulationState<TGlobalState>> => {
+  let currentGlobalState = simulationState.state;
+  const updatedNodes = [...simulationState.nodes];
 
   // Execute each node's action in sequence
-  for (const node of simulationState.nodes) {
-    const result = await node.action(currentState);
-    currentState = result;
+  for (let i = 0; i < updatedNodes.length; i++) {
+    const node = updatedNodes[i];
+    
+    // Prepare action parameters
+    const params: ActionParams<TGlobalState, any> = {
+      globalState: currentGlobalState,
+      internalState: node.internalState,
+    };
+
+    // Execute the action
+    const result = await node.action(params);
+    
+    // Result is always { globalState, internalState? }
+    currentGlobalState = result.globalState;
+    
+    // Update internal state if provided
+    if (result.internalState !== undefined) {
+      updatedNodes[i] = {
+        ...node,
+        internalState: result.internalState,
+      };
+    }
   }
 
   return {
     ...simulationState,
-    state: currentState,
+    nodes: updatedNodes,
+    state: currentGlobalState,
     turn: simulationState.turn + 1,
   };
 };
@@ -41,11 +63,11 @@ export const executeTurn = async <TState>(
 /**
  * Runs a complete simulation
  */
-export const runSimulation = async <TState>(
-  config: SimulationConfig<TState>
-): Promise<SimulationResult<TState>> => {
+export const runSimulation = async <TGlobalState>(
+  config: SimulationConfig<TGlobalState>
+): Promise<SimulationResult<TGlobalState>> => {
   let currentState = createSimulationState(config);
-  const turnHistory: TState[] = [currentState.state];
+  const turnHistory: TGlobalState[] = [currentState.state];
 
   const maxTurns = config.maxTurns ?? 100; // Default to 100 turns
 
@@ -54,27 +76,38 @@ export const runSimulation = async <TState>(
     turnHistory.push(currentState.state);
   }
 
+  // Extract final internal states
+  const finalNodeStates: { [nodeId: string]: any } = {};
+  for (const node of currentState.nodes) {
+    if (node.internalState !== undefined) {
+      finalNodeStates[node.id] = node.internalState;
+    }
+  }
+
   return {
     finalState: currentState.state,
+    finalNodeStates: Object.keys(finalNodeStates).length > 0 ? finalNodeStates : undefined,
     turnHistory,
     totalTurns: currentState.turn,
   };
 };
 
 /**
- * Utility to create a simple node
+ * Utility to create a node
  */
-export const createNode = <TState>(
+export const createNode = <TGlobalState, TInternalState = never>(
   id: string,
-  action: Action<TState>
-): Node<TState> => ({
+  action: Action<TGlobalState, TInternalState>,
+  initialInternalState?: TInternalState
+): Node<TGlobalState, TInternalState> => ({
   id,
   action,
+  internalState: initialInternalState,
 });
 
 /**
- * Utility to create an action (works with both sync and async functions)
+ * Unified utility to create an action (works with both simple and internal state)
  */
-export const createAction = <TState>(
-  action: (state: TState) => TState | Promise<TState>
-): Action<TState> => action;
+export const createAction = <TGlobalState, TInternalState = never>(
+  action: Action<TGlobalState, TInternalState>
+): Action<TGlobalState, TInternalState> => action;

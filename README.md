@@ -32,11 +32,7 @@ Each simulation turn:
 Here's the simplest possible simulation - a counter that increments:
 
 ```typescript
-import {
-  runSimulation,
-  createNode,
-  createAction,
-} from "./lib/simulation.ts";
+import { runSimulation, createNode, createAction } from "./lib/simulation.ts";
 
 // 1. Define the global state of your simulation
 interface CounterState {
@@ -44,8 +40,8 @@ interface CounterState {
 }
 
 // 2. Create an action that modifies the state
-const increment = createAction<CounterState>((state) => ({
-  count: state.count + 1,
+const increment = createAction<CounterState>(({ globalState }) => ({
+  globalState: { count: globalState.count + 1 }, // Always return { globalState }
 }));
 
 // 3. Create a node (agent) that performs the action
@@ -64,16 +60,31 @@ console.log(result.turnHistory); // Full history: [{count:0}, {count:1}, {count:
 
 **Result**: Counter goes 0 → 1 → 2 → 3 over 3 turns.
 
+### Action Return Format
+
+Actions always return an object with `globalState` and optional `internalState`:
+
+```typescript
+// Simple action - only global state
+const increment = createAction<CounterState>(({ globalState }) => ({
+  globalState: { count: globalState.count + 1 },
+}));
+
+// Action with internal state
+const smartAgent = createAction<GlobalState, AgentMemory>(
+  ({ globalState, internalState }) => ({
+    globalState: { ...globalState, value: newValue },
+    internalState: { ...internalState, memory: newMemory },
+  })
+);
+```
+
 ## Multi-Agent Example
 
 Here's a simple ecosystem with rabbits and grass:
 
 ```typescript
-import {
-  runSimulation,
-  createNode,
-  createAction,
-} from "./lib/simulation.ts";
+import { runSimulation, createNode, createAction } from "./lib/simulation.ts";
 
 interface EcosystemState {
   rabbits: number;
@@ -81,20 +92,24 @@ interface EcosystemState {
 }
 
 // Rabbits eat grass and reproduce
-const rabbitAction = createAction<EcosystemState>((state) => {
-  const grassEaten = Math.min(state.rabbits, state.grass);
-  const newRabbits = state.rabbits + Math.floor(grassEaten * 0.5);
+const rabbitAction = createAction<EcosystemState>(({ globalState }) => {
+  const grassEaten = Math.min(globalState.rabbits, globalState.grass);
+  const newRabbits = globalState.rabbits + Math.floor(grassEaten * 0.5);
 
   return {
-    rabbits: newRabbits,
-    grass: Math.max(0, state.grass - grassEaten),
+    globalState: {
+      rabbits: newRabbits,
+      grass: Math.max(0, globalState.grass - grassEaten),
+    },
   };
 });
 
 // Grass regrows
-const grassAction = createAction<EcosystemState>((state) => ({
-  ...state,
-  grass: state.grass + 2,
+const grassAction = createAction<EcosystemState>(({ globalState }) => ({
+  globalState: {
+    ...globalState,
+    grass: globalState.grass + 2,
+  },
 }));
 
 // Create nodes and run
@@ -134,16 +149,30 @@ experiments/                   # Example simulations
 
 ### Internal Node State
 
-For complex agents that need memory, use the extended framework:
+For agents that need memory, the unified API handles this seamlessly:
 
 ```typescript
-import {
-  runSimulationWithInternalState,
-  createNodeWithInternalState,
-} from "./lib/simulation-with-internal-state.ts";
-```
+// Agent with internal state
+const smartAgent = createAction<GlobalState, AgentMemory>(
+  ({ globalState, internalState }) => {
+    if (!internalState) throw new Error("Agent needs memory");
 
-This allows each node to maintain private state separate from the global simulation state.
+    return {
+      globalState: {
+        ...globalState,
+        value: globalState.value + internalState.knowledge,
+      },
+      internalState: {
+        ...internalState,
+        knowledge: internalState.knowledge + 1,
+      },
+    };
+  }
+);
+
+// Create node with initial internal state
+const node = createNode("smart-agent", smartAgent, { knowledge: 5 });
+```
 
 ### LLM Integration
 
@@ -159,10 +188,10 @@ See `experiments/market/boom-bust.ts` for an example of using LLMs as trading ag
 
 ### Key Types
 
-- `Action<TState>` - Function that transforms state: `(state: TState) => TState | Promise<TState>`
-- `Node<TState>` - Agent with `id` and `action`
-- `SimulationConfig<TState>` - `{ initialState, nodes, maxTurns? }`
-- `SimulationResult<TState>` - `{ finalState, turnHistory, totalTurns }`
+- `Action<TGlobalState, TInternalState>` - Function that transforms state: `({ globalState, internalState? }) => TGlobalState | { globalState, internalState } | Promise<...>`
+- `Node<TGlobalState, TInternalState>` - Agent with `id`, `action`, and optional `internalState`
+- `SimulationConfig<TGlobalState>` - `{ initialState, nodes, maxTurns? }`
+- `SimulationResult<TGlobalState>` - `{ finalState, finalNodeStates?, turnHistory, totalTurns }`
 
 ## Creating Your Own Simulation
 

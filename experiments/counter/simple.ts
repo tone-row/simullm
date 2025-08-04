@@ -7,22 +7,28 @@ interface CounterState {
 }
 
 // Create some simple actions
-const incrementAction = createAction<CounterState>((state) => ({
-  ...state,
-  value: state.value + 1,
-  history: [...state.history, state.value + 1],
+const incrementAction = createAction<CounterState>(({ globalState }) => ({
+  globalState: {
+    ...globalState,
+    value: globalState.value + 1,
+    history: [...globalState.history, globalState.value + 1],
+  }
 }));
 
-const doubleAction = createAction<CounterState>((state) => ({
-  ...state,
-  value: state.value * 2,
-  history: [...state.history, state.value * 2],
+const doubleAction = createAction<CounterState>(({ globalState }) => ({
+  globalState: {
+    ...globalState,
+    value: globalState.value * 2,
+    history: [...globalState.history, globalState.value * 2],
+  }
 }));
 
-const resetAction = createAction<CounterState>((state) => ({
-  ...state,
-  value: 0,
-  history: [...state.history, 0],
+const resetAction = createAction<CounterState>(({ globalState }) => ({
+  globalState: {
+    ...globalState,
+    value: 0,
+    history: [...globalState.history, 0],
+  }
 }));
 
 // Create nodes

@@ -1,10 +1,6 @@
-import {
-  runSimulationWithInternalState,
-  createNodeWithInternalState,
-  createActionWithInternalState,
-} from "../../lib/simulation-with-internal-state.ts";
+import { runSimulation, createNode, createAction } from "../../lib/simulation.ts";
 
-// Example: Agents with memory/learning capabilities
+// Example: Agents with memory/learning capabilities using unified API
 interface GlobalState {
   totalValue: number;
   history: number[];
@@ -17,95 +13,75 @@ interface AgentInternalState {
 }
 
 // Agent that remembers previous actions and learns
-const learningAgentAction = createActionWithInternalState<
-  GlobalState,
-  AgentInternalState
->((globalState, internalState) => {
-  // Agent remembers its history and adjusts behavior
-  const memorySize = internalState.memory.length;
-  const learningBonus = Math.min(memorySize * internalState.learningRate, 5);
-
-  const newValue = globalState.totalValue + 1 + learningBonus;
-  const newMemory = [...internalState.memory, newValue].slice(-10); // Keep last 10 values
-
-  return {
-    globalState: {
-      ...globalState,
-      totalValue: newValue,
-      history: [...globalState.history, newValue],
-    },
-    internalState: {
-      ...internalState,
-      memory: newMemory,
-      learningRate: internalState.learningRate * 1.01, // Gradually improve learning
-      lastAction: `added ${1 + learningBonus}`,
-    },
-  };
-});
+const learningAgentAction = createAction<GlobalState, AgentInternalState>(
+  ({ globalState, internalState }) => {
+    if (!internalState) throw new Error("Learning agent needs internal state");
+    
+    // Agent remembers its history and adjusts behavior
+    const memorySize = internalState.memory.length;
+    const contribution = memorySize > 3 ? internalState.learningRate * 2 : internalState.learningRate;
+    
+    return {
+      globalState: {
+        totalValue: globalState.totalValue + contribution,
+        history: [...globalState.history, globalState.totalValue + contribution],
+      },
+      internalState: {
+        memory: [...internalState.memory, contribution].slice(-5), // Keep last 5 memories
+        learningRate: internalState.learningRate * 1.1, // Learn faster over time
+        lastAction: "learned",
+      },
+    };
+  }
+);
 
 // Agent that gets tired over time
-const tiredAgentAction = createActionWithInternalState<
-  GlobalState,
-  AgentInternalState
->((globalState, internalState) => {
-  const fatigue = Math.min(internalState.memory.length * 0.1, 2);
-  const contribution = Math.max(0, 2 - fatigue);
-
-  const newValue = globalState.totalValue + contribution;
-  const newMemory = [...internalState.memory, contribution].slice(-5);
-
-  return {
-    globalState: {
-      ...globalState,
-      totalValue: newValue,
-      history: [...globalState.history, newValue],
-    },
-    internalState: {
-      ...internalState,
-      memory: newMemory,
-      learningRate: internalState.learningRate * 0.99, // Get tired
-      lastAction: `contributed ${contribution}`,
-    },
-  };
-});
-
-// Create nodes with internal state
-const learningAgent = createNodeWithInternalState(
-  "learning-agent",
-  learningAgentAction,
-  {
-    memory: [],
-    learningRate: 0.1,
-    lastAction: "none",
+const tiredAgentAction = createAction<GlobalState, AgentInternalState>(
+  ({ globalState, internalState }) => {
+    if (!internalState) throw new Error("Tired agent needs internal state");
+    
+    const energyLevel = Math.max(0.1, 1 - internalState.memory.length * 0.1);
+    const contribution = internalState.learningRate * energyLevel;
+    
+    return {
+      globalState: {
+        totalValue: globalState.totalValue + contribution,
+        history: [...globalState.history, globalState.totalValue + contribution],
+      },
+      internalState: {
+        memory: [...internalState.memory, contribution],
+        learningRate: internalState.learningRate * 0.95, // Get tired over time
+        lastAction: "worked",
+      },
+    };
   }
 );
 
-const tiredAgent = createNodeWithInternalState(
-  "tired-agent",
-  tiredAgentAction,
-  {
-    memory: [],
-    learningRate: 0.05,
-    lastAction: "none",
-  }
-);
-
-// Run the simulation with internal states
+// Run the simulation with agents that have internal state
 export const runInternalStateExample = async () => {
   const config = {
     initialState: { totalValue: 0, history: [0] },
-    nodes: [learningAgent, tiredAgent],
-    maxTurns: 10,
+    nodes: [
+      createNode("learner", learningAgentAction, {
+        memory: [],
+        learningRate: 1,
+        lastAction: "none",
+      }),
+      createNode("tired", tiredAgentAction, {
+        memory: [],
+        learningRate: 2,
+        lastAction: "none",
+      }),
+    ],
+    maxTurns: 5,
   };
 
-  const result = await runSimulationWithInternalState(config);
+  const result = await runSimulation(config);
 
-  console.log("\nInternal State Simulation Result:");
-  console.log("Final global state:", result.finalState);
-  console.log("Final agent states:");
-  result.finalNodeStates.forEach((state, index) => {
-    console.log(`  Agent ${index}:`, state);
-  });
+  console.log("Internal State Simulation Result:");
+  console.log("Final value:", result.finalState.totalValue);
+  console.log("History:", result.finalState.history);
+  console.log("Final node states:", result.finalNodeStates);
   console.log("Total turns:", result.totalTurns);
 
   return result;

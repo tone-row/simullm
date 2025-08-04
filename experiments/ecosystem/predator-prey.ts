@@ -14,53 +14,59 @@ interface EcosystemState {
 }
 
 // Rabbit behavior: reproduce and eat grass
-const rabbitAction = createAction<EcosystemState>((state) => {
-  const newRabbits = Math.floor(state.rabbits * 1.2); // 20% growth rate
-  const grassEaten = Math.min(newRabbits * 0.5, state.grass); // Each rabbit eats 0.5 grass
-  const newGrass = Math.max(0, state.grass - grassEaten);
+const rabbitAction = createAction<EcosystemState>(({ globalState }) => {
+  const newRabbits = Math.floor(globalState.rabbits * 1.2); // 20% growth rate
+  const grassEaten = Math.min(newRabbits * 0.5, globalState.grass); // Each rabbit eats 0.5 grass
+  const newGrass = Math.max(0, globalState.grass - grassEaten);
 
   return {
-    ...state,
-    rabbits: newRabbits,
-    grass: newGrass,
-    history: {
-      rabbits: [...state.history.rabbits, newRabbits],
-      foxes: [...state.history.foxes, state.foxes],
-      grass: [...state.history.grass, newGrass],
-    },
+    globalState: {
+      ...globalState,
+      rabbits: newRabbits,
+      grass: newGrass,
+      history: {
+        rabbits: [...globalState.history.rabbits, newRabbits],
+        foxes: [...globalState.history.foxes, globalState.foxes],
+        grass: [...globalState.history.grass, newGrass],
+      },
+    }
   };
 });
 
 // Fox behavior: hunt rabbits and reproduce
-const foxAction = createAction<EcosystemState>((state) => {
-  const rabbitsCaught = Math.min(Math.floor(state.foxes * 0.8), state.rabbits); // Each fox catches 0.8 rabbits
-  const newRabbits = Math.max(0, state.rabbits - rabbitsCaught);
-  const newFoxes = Math.floor(state.foxes * (1 + rabbitsCaught * 0.1)); // Foxes grow based on food
+const foxAction = createAction<EcosystemState>(({ globalState }) => {
+  const rabbitsCaught = Math.min(Math.floor(globalState.foxes * 0.8), globalState.rabbits); // Each fox catches 0.8 rabbits
+  const newRabbits = Math.max(0, globalState.rabbits - rabbitsCaught);
+  const newFoxes = Math.floor(globalState.foxes * (1 + rabbitsCaught * 0.1)); // Foxes grow based on food
 
   return {
-    ...state,
-    rabbits: newRabbits,
-    foxes: newFoxes,
-    history: {
-      rabbits: [...state.history.rabbits, newRabbits],
-      foxes: [...state.history.foxes, newFoxes],
-      grass: [...state.history.grass, state.grass],
-    },
+    globalState: {
+      ...globalState,
+      rabbits: newRabbits,
+      foxes: newFoxes,
+      history: {
+        rabbits: [...globalState.history.rabbits, newRabbits],
+        foxes: [...globalState.history.foxes, newFoxes],
+        grass: [...globalState.history.grass, globalState.grass],
+      },
+    }
   };
 });
 
 // Grass behavior: regrow
-const grassAction = createAction<EcosystemState>((state) => {
-  const newGrass = Math.min(100, state.grass * 1.1); // 10% growth, max 100
+const grassAction = createAction<EcosystemState>(({ globalState }) => {
+  const newGrass = Math.min(100, globalState.grass * 1.1); // 10% growth, max 100
 
   return {
-    ...state,
-    grass: newGrass,
-    history: {
-      rabbits: [...state.history.rabbits, state.rabbits],
-      foxes: [...state.history.foxes, state.foxes],
-      grass: [...state.history.grass, newGrass],
-    },
+    globalState: {
+      ...globalState,
+      grass: newGrass,
+      history: {
+        rabbits: [...globalState.history.rabbits, globalState.rabbits],
+        foxes: [...globalState.history.foxes, globalState.foxes],
+        grass: [...globalState.history.grass, newGrass],
+      },
+    }
   };
 });
 
@@ -90,7 +96,7 @@ export const runEcosystemExample = async () => {
   const result = await runSimulation(config);
 
   console.log("\nEcosystem Simulation Result:");
-  console.log("Final state:");
+  console.log("Final globalState:");
   console.log(`  Rabbits: ${result.finalState.rabbits}`);
   console.log(`  Foxes: ${result.finalState.foxes}`);
   console.log(`  Grass: ${result.finalState.grass}`);
