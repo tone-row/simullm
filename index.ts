@@ -88,23 +88,46 @@ const htmlContent = `
         .grid path {
             stroke-width: 0;
         }
-        .line {
+        .line-price {
             fill: none;
             stroke: #667eea;
             stroke-width: 3;
+        }
+        .line-underlying {
+            fill: none;
+            stroke: #764ba2;
+            stroke-width: 3;
+            stroke-dasharray: 5,5;
         }
         .area {
             fill: url(#gradient);
             opacity: 0.3;
         }
-        .dot {
+        .dot-price {
             fill: #667eea;
             stroke: white;
             stroke-width: 2;
         }
-        .dot:hover {
+        .dot-underlying {
             fill: #764ba2;
+            stroke: white;
+            stroke-width: 2;
+        }
+        .dot-price:hover, .dot-underlying:hover {
             cursor: pointer;
+        }
+        .legend {
+            font-size: 12px;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 3px;
+            margin-right: 5px;
         }
         .tooltip {
             position: absolute;
@@ -148,13 +171,8 @@ const htmlContent = `
         </div>
 
         <div class="chart-container">
-            <div class="chart-title">Price History Over Time</div>
-            <div id="price-chart"></div>
-        </div>
-
-        <div class="chart-container">
-            <div class="chart-title">Underlying Value History Over Time</div>
-            <div id="underlying-value-chart"></div>
+            <div class="chart-title">Price vs Underlying Value Over Time</div>
+            <div id="combined-chart"></div>
         </div>
     </div>
 
@@ -168,24 +186,24 @@ const htmlContent = `
           }))
         )};
 
-        // Price chart
-        const priceMargin = {top: 20, right: 30, bottom: 40, left: 60};
-        const priceWidth = 800 - priceMargin.left - priceMargin.right;
-        const priceHeight = 400 - priceMargin.top - priceMargin.bottom;
+        // Combined chart
+        const margin = {top: 20, right: 30, bottom: 40, left: 60};
+        const width = 800 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
 
-        const priceSvg = d3.select("#price-chart")
+        const svg = d3.select("#combined-chart")
             .append("svg")
-            .attr("width", priceWidth + priceMargin.left + priceMargin.right)
-            .attr("height", priceHeight + priceMargin.top + priceMargin.bottom)
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
             .append("g")
-            .attr("transform", "translate(" + priceMargin.left + "," + priceMargin.top + ")");
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        // Add gradient
-        const gradient = priceSvg.append("defs")
+        // Add gradient for price area
+        const gradient = svg.append("defs")
             .append("linearGradient")
             .attr("id", "gradient")
             .attr("gradientUnits", "userSpaceOnUse")
-            .attr("x1", 0).attr("y1", priceHeight)
+            .attr("x1", 0).attr("y1", height)
             .attr("x2", 0).attr("y2", 0);
 
         gradient.append("stop")
@@ -198,155 +216,147 @@ const htmlContent = `
             .attr("stop-color", "#667eea")
             .attr("stop-opacity", 0.1);
 
-        // Scales
-        const priceX = d3.scaleLinear()
+        // Scales - combine both price and underlying value ranges
+        const x = d3.scaleLinear()
             .domain([0, d3.max(data, d => d.turn)])
-            .range([0, priceWidth]);
+            .range([0, width]);
 
-        const priceY = d3.scaleLinear()
-            .domain([d3.min(data, d => d.price) * 0.95, d3.max(data, d => d.price) * 1.05])
-            .range([priceHeight, 0]);
+        const y = d3.scaleLinear()
+            .domain([
+                Math.min(d3.min(data, d => d.price), d3.min(data, d => d.underlyingValue)) * 0.95,
+                Math.max(d3.max(data, d => d.price), d3.max(data, d => d.underlyingValue)) * 1.05
+            ])
+            .range([height, 0]);
 
         // Grid
-        priceSvg.append("g")
+        svg.append("g")
             .attr("class", "grid")
-            .attr("transform", "translate(0," + priceHeight + ")")
-            .call(d3.axisBottom(priceX).tickSize(-priceHeight).tickFormat(""));
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x).tickSize(-height).tickFormat(""));
 
-        priceSvg.append("g")
+        svg.append("g")
             .attr("class", "grid")
-            .call(d3.axisLeft(priceY).tickSize(-priceWidth).tickFormat(""));
+            .call(d3.axisLeft(y).tickSize(-width).tickFormat(""));
 
-        // Line
-        const priceLine = d3.line()
-            .x(d => priceX(d.turn))
-            .y(d => priceY(d.price));
-
-        // Area
+        // Price area
         const priceArea = d3.area()
-            .x(d => priceX(d.turn))
-            .y0(priceHeight)
-            .y1(d => priceY(d.price));
+            .x(d => x(d.turn))
+            .y0(height)
+            .y1(d => y(d.price));
 
-        // Add area
-        priceSvg.append("path")
+        // Add price area
+        svg.append("path")
             .datum(data)
             .attr("class", "area")
             .attr("d", priceArea);
 
-        // Add line
-        priceSvg.append("path")
+        // Lines
+        const priceLine = d3.line()
+            .x(d => x(d.turn))
+            .y(d => y(d.price));
+
+        const underlyingLine = d3.line()
+            .x(d => x(d.turn))
+            .y(d => y(d.underlyingValue));
+
+        // Add price line
+        svg.append("path")
             .datum(data)
-            .attr("class", "line")
+            .attr("class", "line-price")
             .attr("d", priceLine);
 
-        // Add dots
-        priceSvg.selectAll(".dot")
+        // Add underlying value line
+        svg.append("path")
+            .datum(data)
+            .attr("class", "line-underlying")
+            .attr("d", underlyingLine);
+
+        // Add price dots
+        svg.selectAll(".dot-price")
             .data(data)
             .enter().append("circle")
-            .attr("class", "dot")
-            .attr("cx", d => priceX(d.turn))
-            .attr("cy", d => priceY(d.price))
+            .attr("class", "dot-price")
+            .attr("cx", d => x(d.turn))
+            .attr("cy", d => y(d.price))
+            .attr("r", 4);
+
+        // Add underlying value dots
+        svg.selectAll(".dot-underlying")
+            .data(data)
+            .enter().append("circle")
+            .attr("class", "dot-underlying")
+            .attr("cx", d => x(d.turn))
+            .attr("cy", d => y(d.underlyingValue))
             .attr("r", 4);
 
         // Axes
-        priceSvg.append("g")
-            .attr("transform", "translate(0," + priceHeight + ")")
-            .call(d3.axisBottom(priceX))
+        svg.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x))
             .selectAll("text")
             .style("text-anchor", "middle");
 
-        priceSvg.append("g")
-            .call(d3.axisLeft(priceY))
+        svg.append("g")
+            .call(d3.axisLeft(y))
             .selectAll("text")
             .style("text-anchor", "end");
 
         // Labels
-        priceSvg.append("text")
+        svg.append("text")
             .attr("class", "axis-label")
             .attr("text-anchor", "middle")
-            .attr("x", priceWidth / 2)
-            .attr("y", priceHeight + 35)
+            .attr("x", width / 2)
+            .attr("y", height + 35)
             .text("Turn");
 
-        priceSvg.append("text")
+        svg.append("text")
             .attr("class", "axis-label")
             .attr("text-anchor", "middle")
             .attr("transform", "rotate(-90)")
-            .attr("x", -priceHeight / 2)
+            .attr("x", -height / 2)
             .attr("y", -40)
-            .text("Price ($)");
+            .text("Value ($)");
 
-        // Underlying Value chart
-        const underlyingValueMargin = {top: 20, right: 30, bottom: 40, left: 60};
-        const underlyingValueWidth = 800 - underlyingValueMargin.left - underlyingValueMargin.right;
-        const underlyingValueHeight = 400 - underlyingValueMargin.top - underlyingValueMargin.bottom;
+        // Add legend
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", "translate(" + (width - 200) + ", 20)");
 
-        const underlyingValueSvg = d3.select("#underlying-value-chart")
-            .append("svg")
-            .attr("width", underlyingValueWidth + underlyingValueMargin.left + underlyingValueMargin.right)
-            .attr("height", underlyingValueHeight + underlyingValueMargin.top + underlyingValueMargin.bottom)
-            .append("g")
-            .attr("transform", "translate(" + underlyingValueMargin.left + "," + underlyingValueMargin.top + ")");
+        legend.append("g")
+            .attr("class", "legend-item")
+            .append("line")
+            .attr("class", "legend-color")
+            .attr("x1", 0)
+            .attr("x2", 20)
+            .attr("y1", 0)
+            .attr("y2", 0)
+            .style("stroke", "#667eea")
+            .style("stroke-width", 3);
 
-        // Underlying Value scales
-        const underlyingValueX = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.turn)])
-            .range([0, underlyingValueWidth]);
+        legend.append("text")
+            .attr("x", 25)
+            .attr("y", 4)
+            .text("Price");
 
-        const underlyingValueY = d3.scaleLinear()
-            .domain([d3.min(data, d => d.underlyingValue) * 0.95, d3.max(data, d => d.underlyingValue) * 1.05])
-            .range([underlyingValueHeight, 0]);
+        legend.append("g")
+            .attr("class", "legend-item")
+            .attr("transform", "translate(0, 20)")
+            .append("line")
+            .attr("class", "legend-color")
+            .attr("x1", 0)
+            .attr("x2", 20)
+            .attr("y1", 0)
+            .attr("y2", 0)
+            .style("stroke", "#764ba2")
+            .style("stroke-width", 3)
+            .style("stroke-dasharray", "5,5");
 
-        // Underlying Value line
-        const underlyingValueLine = d3.line()
-            .x(d => underlyingValueX(d.turn))
-            .y(d => underlyingValueY(d.underlyingValue));
+        legend.append("text")
+            .attr("x", 25)
+            .attr("y", 24)
+            .text("Underlying Value");
 
-        // Add underlying value line
-        underlyingValueSvg.append("path")
-            .datum(data)
-            .attr("class", "line")
-            .attr("stroke", "#764ba2")
-            .attr("d", underlyingValueLine);
 
-        // Add underlying value dots
-        underlyingValueSvg.selectAll(".dot")
-            .data(data)
-            .enter().append("circle")
-            .attr("class", "dot")
-            .attr("fill", "#764ba2")
-            .attr("cx", d => underlyingValueX(d.turn))
-            .attr("cy", d => underlyingValueY(d.underlyingValue))
-            .attr("r", 4);
-
-        // Underlying Value axes
-        underlyingValueSvg.append("g")
-            .attr("transform", "translate(0," + underlyingValueHeight + ")")
-            .call(d3.axisBottom(underlyingValueX))
-            .selectAll("text")
-            .style("text-anchor", "middle");
-
-        underlyingValueSvg.append("g")
-            .call(d3.axisLeft(underlyingValueY))
-            .selectAll("text")
-            .style("text-anchor", "end");
-
-        // Underlying Value labels
-        underlyingValueSvg.append("text")
-            .attr("class", "axis-label")
-            .attr("text-anchor", "middle")
-            .attr("x", underlyingValueWidth / 2)
-            .attr("y", underlyingValueHeight + 35)
-            .text("Turn");
-
-        underlyingValueSvg.append("text")
-            .attr("class", "axis-label")
-            .attr("text-anchor", "middle")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -underlyingValueHeight / 2)
-            .attr("y", -40)
-            .text("Underlying Value ($)");
     </script>
 </body>
 </html>

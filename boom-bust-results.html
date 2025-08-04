@@ -67,23 +67,46 @@
         .grid path {
             stroke-width: 0;
         }
-        .line {
+        .line-price {
             fill: none;
             stroke: #667eea;
             stroke-width: 3;
+        }
+        .line-underlying {
+            fill: none;
+            stroke: #764ba2;
+            stroke-width: 3;
+            stroke-dasharray: 5,5;
         }
         .area {
             fill: url(#gradient);
             opacity: 0.3;
         }
-        .dot {
+        .dot-price {
             fill: #667eea;
             stroke: white;
             stroke-width: 2;
         }
-        .dot:hover {
+        .dot-underlying {
             fill: #764ba2;
+            stroke: white;
+            stroke-width: 2;
+        }
+        .dot-price:hover, .dot-underlying:hover {
             cursor: pointer;
+        }
+        .legend {
+            font-size: 12px;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 3px;
+            margin-right: 5px;
         }
         .tooltip {
             position: absolute;
@@ -102,56 +125,51 @@
         
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-value">$150.00</div>
+                <div class="stat-value">$110.00</div>
                 <div class="stat-label">Final Price</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">2000</div>
-                <div class="stat-label">Final Volume</div>
+                <div class="stat-value">$110.46</div>
+                <div class="stat-label">Final Underlying Value</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">10</div>
                 <div class="stat-label">Total Turns</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">50.0%</div>
+                <div class="stat-value">10.0%</div>
                 <div class="stat-label">Price Change</div>
             </div>
         </div>
 
         <div class="chart-container">
-            <div class="chart-title">Price History Over Time</div>
-            <div id="price-chart"></div>
-        </div>
-
-        <div class="chart-container">
-            <div class="chart-title">Volume History Over Time</div>
-            <div id="volume-chart"></div>
+            <div class="chart-title">Price vs Underlying Value Over Time</div>
+            <div id="combined-chart"></div>
         </div>
     </div>
 
     <script>
         // Data from the experiment
-        const data = [{"turn":0,"price":100,"volume":1000},{"turn":1,"price":105,"volume":1100},{"turn":2,"price":110,"volume":1200},{"turn":3,"price":115,"volume":1300},{"turn":4,"price":120,"volume":1400},{"turn":5,"price":125,"volume":1500},{"turn":6,"price":130,"volume":1600},{"turn":7,"price":135,"volume":1700},{"turn":8,"price":140,"volume":1800},{"turn":9,"price":145,"volume":1900},{"turn":10,"price":150,"volume":2000}];
+        const data = [{"turn":0,"price":100,"underlyingValue":100},{"turn":1,"price":110,"underlyingValue":101},{"turn":2,"price":100,"underlyingValue":102.01},{"turn":3,"price":100,"underlyingValue":103.0301},{"turn":4,"price":110,"underlyingValue":104.060401},{"turn":5,"price":100,"underlyingValue":105.10100501},{"turn":6,"price":110,"underlyingValue":106.1520150601},{"turn":7,"price":100,"underlyingValue":107.213535210701},{"turn":8,"price":110,"underlyingValue":108.28567056280801},{"turn":9,"price":110,"underlyingValue":109.36852726843608},{"turn":10,"price":110,"underlyingValue":110.46221254112045}];
 
-        // Price chart
-        const priceMargin = {top: 20, right: 30, bottom: 40, left: 60};
-        const priceWidth = 800 - priceMargin.left - priceMargin.right;
-        const priceHeight = 400 - priceMargin.top - priceMargin.bottom;
+        // Combined chart
+        const margin = {top: 20, right: 30, bottom: 40, left: 60};
+        const width = 800 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
 
-        const priceSvg = d3.select("#price-chart")
+        const svg = d3.select("#combined-chart")
             .append("svg")
-            .attr("width", priceWidth + priceMargin.left + priceMargin.right)
-            .attr("height", priceHeight + priceMargin.top + priceMargin.bottom)
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
             .append("g")
-            .attr("transform", "translate(" + priceMargin.left + "," + priceMargin.top + ")");
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        // Add gradient
-        const gradient = priceSvg.append("defs")
+        // Add gradient for price area
+        const gradient = svg.append("defs")
             .append("linearGradient")
             .attr("id", "gradient")
             .attr("gradientUnits", "userSpaceOnUse")
-            .attr("x1", 0).attr("y1", priceHeight)
+            .attr("x1", 0).attr("y1", height)
             .attr("x2", 0).attr("y2", 0);
 
         gradient.append("stop")
@@ -164,145 +182,147 @@
             .attr("stop-color", "#667eea")
             .attr("stop-opacity", 0.1);
 
-        // Scales
-        const priceX = d3.scaleLinear()
+        // Scales - combine both price and underlying value ranges
+        const x = d3.scaleLinear()
             .domain([0, d3.max(data, d => d.turn)])
-            .range([0, priceWidth]);
+            .range([0, width]);
 
-        const priceY = d3.scaleLinear()
-            .domain([d3.min(data, d => d.price) * 0.95, d3.max(data, d => d.price) * 1.05])
-            .range([priceHeight, 0]);
+        const y = d3.scaleLinear()
+            .domain([
+                Math.min(d3.min(data, d => d.price), d3.min(data, d => d.underlyingValue)) * 0.95,
+                Math.max(d3.max(data, d => d.price), d3.max(data, d => d.underlyingValue)) * 1.05
+            ])
+            .range([height, 0]);
 
         // Grid
-        priceSvg.append("g")
+        svg.append("g")
             .attr("class", "grid")
-            .attr("transform", "translate(0," + priceHeight + ")")
-            .call(d3.axisBottom(priceX).tickSize(-priceHeight).tickFormat(""));
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x).tickSize(-height).tickFormat(""));
 
-        priceSvg.append("g")
+        svg.append("g")
             .attr("class", "grid")
-            .call(d3.axisLeft(priceY).tickSize(-priceWidth).tickFormat(""));
+            .call(d3.axisLeft(y).tickSize(-width).tickFormat(""));
 
-        // Line
-        const priceLine = d3.line()
-            .x(d => priceX(d.turn))
-            .y(d => priceY(d.price));
-
-        // Area
+        // Price area
         const priceArea = d3.area()
-            .x(d => priceX(d.turn))
-            .y0(priceHeight)
-            .y1(d => priceY(d.price));
+            .x(d => x(d.turn))
+            .y0(height)
+            .y1(d => y(d.price));
 
-        // Add area
-        priceSvg.append("path")
+        // Add price area
+        svg.append("path")
             .datum(data)
             .attr("class", "area")
             .attr("d", priceArea);
 
-        // Add line
-        priceSvg.append("path")
+        // Lines
+        const priceLine = d3.line()
+            .x(d => x(d.turn))
+            .y(d => y(d.price));
+
+        const underlyingLine = d3.line()
+            .x(d => x(d.turn))
+            .y(d => y(d.underlyingValue));
+
+        // Add price line
+        svg.append("path")
             .datum(data)
-            .attr("class", "line")
+            .attr("class", "line-price")
             .attr("d", priceLine);
 
-        // Add dots
-        priceSvg.selectAll(".dot")
+        // Add underlying value line
+        svg.append("path")
+            .datum(data)
+            .attr("class", "line-underlying")
+            .attr("d", underlyingLine);
+
+        // Add price dots
+        svg.selectAll(".dot-price")
             .data(data)
             .enter().append("circle")
-            .attr("class", "dot")
-            .attr("cx", d => priceX(d.turn))
-            .attr("cy", d => priceY(d.price))
+            .attr("class", "dot-price")
+            .attr("cx", d => x(d.turn))
+            .attr("cy", d => y(d.price))
+            .attr("r", 4);
+
+        // Add underlying value dots
+        svg.selectAll(".dot-underlying")
+            .data(data)
+            .enter().append("circle")
+            .attr("class", "dot-underlying")
+            .attr("cx", d => x(d.turn))
+            .attr("cy", d => y(d.underlyingValue))
             .attr("r", 4);
 
         // Axes
-        priceSvg.append("g")
-            .attr("transform", "translate(0," + priceHeight + ")")
-            .call(d3.axisBottom(priceX))
+        svg.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x))
             .selectAll("text")
             .style("text-anchor", "middle");
 
-        priceSvg.append("g")
-            .call(d3.axisLeft(priceY))
+        svg.append("g")
+            .call(d3.axisLeft(y))
             .selectAll("text")
             .style("text-anchor", "end");
 
         // Labels
-        priceSvg.append("text")
+        svg.append("text")
             .attr("class", "axis-label")
             .attr("text-anchor", "middle")
-            .attr("x", priceWidth / 2)
-            .attr("y", priceHeight + 35)
+            .attr("x", width / 2)
+            .attr("y", height + 35)
             .text("Turn");
 
-        priceSvg.append("text")
+        svg.append("text")
             .attr("class", "axis-label")
             .attr("text-anchor", "middle")
             .attr("transform", "rotate(-90)")
-            .attr("x", -priceHeight / 2)
+            .attr("x", -height / 2)
             .attr("y", -40)
-            .text("Price ($)");
+            .text("Value ($)");
 
-        // Volume chart
-        const volumeMargin = {top: 20, right: 30, bottom: 40, left: 60};
-        const volumeWidth = 800 - volumeMargin.left - volumeMargin.right;
-        const volumeHeight = 400 - volumeMargin.top - volumeMargin.bottom;
+        // Add legend
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", "translate(" + (width - 200) + ", 20)");
 
-        const volumeSvg = d3.select("#volume-chart")
-            .append("svg")
-            .attr("width", volumeWidth + volumeMargin.left + volumeMargin.right)
-            .attr("height", volumeHeight + volumeMargin.top + volumeMargin.bottom)
-            .append("g")
-            .attr("transform", "translate(" + volumeMargin.left + "," + volumeMargin.top + ")");
+        legend.append("g")
+            .attr("class", "legend-item")
+            .append("line")
+            .attr("class", "legend-color")
+            .attr("x1", 0)
+            .attr("x2", 20)
+            .attr("y1", 0)
+            .attr("y2", 0)
+            .style("stroke", "#667eea")
+            .style("stroke-width", 3);
 
-        // Volume scales
-        const volumeX = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.turn)])
-            .range([0, volumeWidth]);
+        legend.append("text")
+            .attr("x", 25)
+            .attr("y", 4)
+            .text("Price");
 
-        const volumeY = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.volume) * 1.1])
-            .range([volumeHeight, 0]);
+        legend.append("g")
+            .attr("class", "legend-item")
+            .attr("transform", "translate(0, 20)")
+            .append("line")
+            .attr("class", "legend-color")
+            .attr("x1", 0)
+            .attr("x2", 20)
+            .attr("y1", 0)
+            .attr("y2", 0)
+            .style("stroke", "#764ba2")
+            .style("stroke-width", 3)
+            .style("stroke-dasharray", "5,5");
 
-        // Volume bars
-        volumeSvg.selectAll(".bar")
-            .data(data)
-            .enter().append("rect")
-            .attr("class", "bar")
-            .attr("x", d => volumeX(d.turn))
-            .attr("width", volumeWidth / data.length - 2)
-            .attr("y", d => volumeY(d.volume))
-            .attr("height", d => volumeHeight - volumeY(d.volume))
-            .attr("fill", "#764ba2")
-            .attr("opacity", 0.8);
+        legend.append("text")
+            .attr("x", 25)
+            .attr("y", 24)
+            .text("Underlying Value");
 
-        // Volume axes
-        volumeSvg.append("g")
-            .attr("transform", "translate(0," + volumeHeight + ")")
-            .call(d3.axisBottom(volumeX))
-            .selectAll("text")
-            .style("text-anchor", "middle");
 
-        volumeSvg.append("g")
-            .call(d3.axisLeft(volumeY))
-            .selectAll("text")
-            .style("text-anchor", "end");
-
-        // Volume labels
-        volumeSvg.append("text")
-            .attr("class", "axis-label")
-            .attr("text-anchor", "middle")
-            .attr("x", volumeWidth / 2)
-            .attr("y", volumeHeight + 35)
-            .text("Turn");
-
-        volumeSvg.append("text")
-            .attr("class", "axis-label")
-            .attr("text-anchor", "middle")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -volumeHeight / 2)
-            .attr("y", -40)
-            .text("Volume");
     </script>
 </body>
 </html>

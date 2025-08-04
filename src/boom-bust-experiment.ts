@@ -154,7 +154,7 @@ export const runBoomBustExperiment = async () => {
     },
   };
 
-  const maxTurns = 5;
+  const maxTurns = 10;
   console.log("Starting Boom/Bust Cycle Experiment");
   console.log("==================================");
   console.log(
