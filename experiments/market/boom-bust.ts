@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import "dotenv/config";
-import { createEventSimulation, createAgent } from "../../lib/simulation.ts";
+import { createSimulation, createAgent } from "../../lib/simulation.ts";
 
 // Global state for the commodity market
 interface MarketState {
@@ -320,7 +320,7 @@ export const runBoomBustExperiment = async () => {
   console.log("Starting Boom/Bust Cycle Experiment");
   console.log("==================================");
   
-  const simulation = createEventSimulation<MarketState, MarketAction>({
+  const simulation = createSimulation<MarketState, MarketAction>({
     initialGlobalState: {
       price: 100,
       underlyingValue: 100,

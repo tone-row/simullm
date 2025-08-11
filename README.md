@@ -1,6 +1,6 @@
-# SimuLLM
+# ABM-LLM
 
-A TypeScript framework for creating agent-based simulations with support for LLM-powered agents.
+A TypeScript framework for creating event-driven agent-based simulations with support for LLM-powered agents.
 
 ## Quick Start
 
@@ -12,202 +12,256 @@ bun install
 bun test
 ```
 
-## How Simulations Work
+## How Event-Driven Simulations Work
 
-Every simulation follows these steps:
+Simulations are built around **agents** that respond to **actions**:
 
-1. **Define State** - What data your simulation tracks
-2. **Create Actions** - Functions that modify the state
-3. **Create Nodes** - Agents that perform actions
-4. **Configure & Run** - Set initial conditions and execute
+1. **Define Global State** - What data your simulation tracks globally
+2. **Create Agents** - Functions that respond to actions and modify state
+3. **Dispatch Actions** - Trigger events that agents can respond to
+4. **Emergent Behavior** - Complex patterns emerge from agent interactions
 
-Each simulation turn:
-
-- Executes all node actions sequentially
-- Each action receives current state, returns new state
-- State is immutable - actions return modified copies
+Key concepts:
+- **Actions** are events dispatched through the system (e.g., `{ type: "DAY_START" }`)
+- **Agents** listen for actions and can update global state, internal state, or dispatch new actions
+- **Facilitation** emerges from agent coordination rather than pre-defined patterns
 
 ## Your First Simulation
 
-Here's the simplest possible simulation - a counter that increments:
+Here's a simple counter simulation using multiple agents:
 
 ```typescript
-import { runSimulation, createNode, createAction } from "./lib/simulation.ts";
+import { createSimulation, createAgent } from "./lib/simulation.ts";
 
-// 1. Define the global state of your simulation
+// 1. Define the global state
 interface CounterState {
   count: number;
 }
 
-// 2. Create an action that modifies the state
-const increment = createAction<CounterState>(({ globalState }) => ({
-  globalState: { count: globalState.count + 1 }, // Always return { globalState }
-}));
+// 2. Define action types
+type CounterAction = 
+  | { type: "START" }
+  | { type: "INCREMENT"; amount: number };
 
-// 3. Create a node (agent) that performs the action
-const incrementNode = createNode("increment", increment);
+// 3. Create a facilitator agent
+const facilitator = createAgent<CounterState, CounterAction>(
+  "facilitator",
+  (action, context) => {
+    if (action.type === "START") {
+      context.dispatch({ type: "INCREMENT", amount: 1 });
+    }
+  }
+);
 
-// 4. Configure and run the simulation
-const result = await runSimulation({
-  initialState: { count: 0 },
-  nodes: [incrementNode],
-  maxTurns: 3,
+// 4. Create a counter agent
+const counter = createAgent<CounterState, CounterAction>(
+  "counter", 
+  (action, context) => {
+    if (action.type === "INCREMENT") {
+      context.updateGlobalState(state => ({ count: state.count + action.amount }));
+    }
+  }
+);
+
+// 5. Create and run simulation
+const simulation = createSimulation<CounterState, CounterAction>({
+  initialGlobalState: { count: 0 },
+  agents: [facilitator, counter],
 });
 
-console.log(result.finalState.count); // 3
-console.log(result.turnHistory); // Full history: [{count:0}, {count:1}, {count:2}, {count:3}]
+await simulation.dispatch({ type: "START" });
+
+console.log(simulation.getGlobalState().count); // 1
 ```
 
-**Result**: Counter goes 0 → 1 → 2 → 3 over 3 turns.
+## Multi-Agent Ecosystem Example
 
-### Action Return Format
-
-Actions always return an object with `globalState` and optional `internalState`:
+Here's a predator-prey ecosystem where agents coordinate through events:
 
 ```typescript
-// Simple action - only global state
-const increment = createAction<CounterState>(({ globalState }) => ({
-  globalState: { count: globalState.count + 1 },
-}));
-
-// Action with internal state
-const smartAgent = createAction<GlobalState, AgentMemory>(
-  ({ globalState, internalState }) => ({
-    globalState: { ...globalState, value: newValue },
-    internalState: { ...internalState, memory: newMemory },
-  })
-);
-```
-
-## Multi-Agent Example
-
-Here's a simple ecosystem with rabbits and grass:
-
-```typescript
-import { runSimulation, createNode, createAction } from "./lib/simulation.ts";
+import { createSimulation, createAgent } from "./lib/simulation.ts";
 
 interface EcosystemState {
   rabbits: number;
   grass: number;
+  day: number;
 }
 
-// Rabbits eat grass and reproduce
-const rabbitAction = createAction<EcosystemState>(({ globalState }) => {
-  const grassEaten = Math.min(globalState.rabbits, globalState.grass);
-  const newRabbits = globalState.rabbits + Math.floor(grassEaten * 0.5);
+type EcosystemAction =
+  | { type: "DAY_START"; day: number }
+  | { type: "RABBITS_EAT"; amount: number }
+  | { type: "GRASS_GROWS"; amount: number };
 
-  return {
-    globalState: {
-      rabbits: newRabbits,
-      grass: Math.max(0, globalState.grass - grassEaten),
-    },
-  };
+// Rabbit agent responds to new days
+const rabbitAgent = createAgent<EcosystemState, EcosystemAction>(
+  "rabbits",
+  (action, context) => {
+    if (action.type === "DAY_START") {
+      const grassEaten = Math.min(context.globalState.rabbits, context.globalState.grass);
+      context.dispatch({ type: "RABBITS_EAT", amount: grassEaten });
+    }
+    
+    if (action.type === "RABBITS_EAT") {
+      // Update rabbit population based on food
+      const newRabbits = Math.max(1, Math.floor(context.globalState.rabbits * 1.1));
+      context.updateGlobalState(state => ({ ...state, rabbits: newRabbits }));
+    }
+  }
+);
+
+// Grass agent responds to rabbit eating
+const grassAgent = createAgent<EcosystemState, EcosystemAction>(
+  "grass",
+  (action, context) => {
+    if (action.type === "RABBITS_EAT") {
+      // Reduce grass
+      context.updateGlobalState(state => ({ 
+        ...state, 
+        grass: Math.max(0, state.grass - action.amount) 
+      }));
+      
+      // Then regrow
+      context.dispatch({ type: "GRASS_GROWS", amount: 10 });
+    }
+    
+    if (action.type === "GRASS_GROWS") {
+      context.updateGlobalState(state => ({ 
+        ...state, 
+        grass: Math.min(100, state.grass + action.amount) 
+      }));
+    }
+  }
+);
+
+const simulation = createSimulation<EcosystemState, EcosystemAction>({
+  initialGlobalState: { rabbits: 5, grass: 50, day: 0 },
+  agents: [rabbitAgent, grassAgent],
 });
 
-// Grass regrows
-const grassAction = createAction<EcosystemState>(({ globalState }) => ({
-  globalState: {
-    ...globalState,
-    grass: globalState.grass + 2,
-  },
-}));
-
-// Create nodes and run
-const result = await runSimulation({
-  initialState: { rabbits: 2, grass: 10 },
-  nodes: [
-    createNode("rabbits", rabbitAction),
-    createNode("grass", grassAction),
-  ],
-  maxTurns: 5,
-});
-
-// Print results
-result.turnHistory.forEach((state, turn) => {
-  console.log(`Turn ${turn}: Rabbits=${state.rabbits}, Grass=${state.grass}`);
-});
+// Start the ecosystem
+await simulation.dispatch({ type: "DAY_START", day: 1 });
 ```
 
-This creates population dynamics where rabbits consume grass to reproduce while grass regrows each turn.
+## Agents with Internal State
+
+Agents can maintain their own private state for memory, learning, or coordination:
+
+```typescript
+interface AgentMemory {
+  lastAction: string;
+  energy: number;
+}
+
+const learningAgent = createAgent<GlobalState, Action, AgentMemory>(
+  "learner",
+  (action, context) => {
+    if (action.type === "WORK_REQUEST") {
+      // Use internal state for decision making
+      const canWork = context.internalState.energy > 50;
+      
+      if (canWork) {
+        context.updateGlobalState(state => ({ ...state, work: state.work + 10 }));
+        context.updateInternalState(state => ({ 
+          ...state, 
+          energy: state.energy - 20,
+          lastAction: "worked"
+        }));
+      }
+    }
+  },
+  { lastAction: "none", energy: 100 } // Initial internal state
+);
+```
 
 ## Project Structure
 
 ```
-lib/                           # Core framework
-├── simulation.ts              # Main simulation engine
-├── types.ts                   # Type definitions
-├── simulation-with-internal-state.ts   # Extended version with node-internal state
-└── types-with-internal-state.ts        # Extended types
+lib/                     # Core framework
+├── simulation.ts        # Event-driven simulation engine  
+├── types.ts            # Type definitions
+└── simulation.test.ts  # Comprehensive test suite
 
-experiments/                   # Example simulations
-├── counter/                   # Simple counter examples
-├── ecosystem/                 # Predator-prey dynamics
-└── market/                    # Economic boom-bust cycles with LLMs
+experiments/            # Example simulations
+├── counter/           # Simple counter examples
+├── ecosystem/         # Predator-prey dynamics  
+└── market/           # Economic simulations with LLMs
+
+tmp/                   # Development examples
+└── *.ts              # Quick test scenarios
 ```
 
-## Advanced Features
+## Advanced Patterns
 
-### Internal Node State
+### Facilitator Agents
 
-For agents that need memory, the unified API handles this seamlessly:
+Create agents that coordinate others through event dispatch:
 
 ```typescript
-// Agent with internal state
-const smartAgent = createAction<GlobalState, AgentMemory>(
-  ({ globalState, internalState }) => {
-    if (!internalState) throw new Error("Agent needs memory");
+const facilitator = createAgent<State, Action, FacilitatorState>(
+  "facilitator",
+  (action, context) => {
+    if (action.type === "START") {
+      context.dispatch({ type: "TURN_START", agentId: "player1" });
+    }
+    
+    if (action.type === "TURN_COMPLETE") {
+      const nextPlayer = getNextPlayer(action.agentId);
+      context.dispatch({ type: "TURN_START", agentId: nextPlayer });
+    }
+  },
+  { currentTurn: 0, playerOrder: ["player1", "player2"] }
+);
+```
 
-    return {
-      globalState: {
-        ...globalState,
-        value: globalState.value + internalState.knowledge,
-      },
-      internalState: {
-        ...internalState,
-        knowledge: internalState.knowledge + 1,
-      },
-    };
+### LLM-Powered Agents
+
+See `experiments/market/boom-bust.ts` for examples of agents that use LLMs to make decisions based on simulation state.
+
+### Cascading Actions
+
+Actions can trigger chains of other actions, creating complex emergent behaviors:
+
+```typescript
+const triggerAgent = createAgent<State, Action>(
+  "trigger",
+  (action, context) => {
+    if (action.type === "START") {
+      context.dispatch({ type: "PHASE_1" });
+    }
   }
 );
 
-// Create node with initial internal state
-const node = createNode("smart-agent", smartAgent, { knowledge: 5 });
+const responderAgent = createAgent<State, Action>(
+  "responder", 
+  (action, context) => {
+    if (action.type === "PHASE_1") {
+      context.dispatch({ type: "PHASE_2" });
+    }
+  }
+);
 ```
-
-### LLM Integration
-
-See `experiments/market/boom-bust.ts` for an example of using LLMs as trading agents that make decisions based on market conditions.
 
 ## API Reference
 
 ### Core Functions
 
-- `runSimulation(config)` - Execute a complete simulation
-- `createNode(id, action)` - Create an agent node
-- `createAction(fn)` - Create action (works with both sync and async functions)
+- `createSimulation<TGlobalState, TAction>(config)` - Create a new simulation
+- `createAgent<TGlobalState, TAction, TInternalState?>(id, onAction, initialInternalState?)` - Create an agent
 
-### Key Types
+### Agent Context
 
-- `Action<TGlobalState, TInternalState>` - Function that transforms state: `({ globalState, internalState? }) => TGlobalState | { globalState, internalState } | Promise<...>`
-- `Node<TGlobalState, TInternalState>` - Agent with `id`, `action`, and optional `internalState`
-- `SimulationConfig<TGlobalState>` - `{ initialState, nodes, maxTurns? }`
-- `SimulationResult<TGlobalState>` - `{ finalState, finalNodeStates?, turnHistory, totalTurns }`
+Each agent receives a context object with:
+- `globalState` - Current global state (read-only)
+- `internalState` - Agent's private state (read-only)  
+- `dispatch(action)` - Dispatch new actions
+- `updateGlobalState(updater)` - Modify global state
+- `updateInternalState(updater)` - Modify agent's internal state
 
-## Creating Your Own Simulation
+### Simulation Methods
 
-1. **Design your state interface** - What variables define your system?
-2. **Identify agents** - What entities act in your simulation?
-3. **Define actions** - How does each agent modify the state?
-4. **Set parameters** - Initial conditions and run length
-5. **Analyze results** - Use `turnHistory` to track dynamics over time
-
-Look at files in `experiments/` for patterns and inspiration.
-
-## Examples
-
-- **Simple Counter** (`experiments/counter/simple.ts`) - Basic state modification
-- **Ecosystem** (`experiments/ecosystem/predator-prey.ts`) - Multi-agent interactions
-- **Market Simulation** (`experiments/market/boom-bust.ts`) - LLM-powered economic agents
+- `dispatch(action)` - Send action to all agents
+- `getGlobalState()` - Get current global state
+- `getAgentInternalState(agentId)` - Get agent's internal state
 
 ## Running Examples
 
@@ -215,8 +269,19 @@ Look at files in `experiments/` for patterns and inspiration.
 # Run specific example
 bun run experiments/counter/simple.ts
 
-# Run tests
-bun test lib/simulation.test.ts
+# Run all tests  
+bun test
+
+# Test specific tmp file
+bun run tmp/02-multi-agent-ecosystem.ts
 ```
 
-The framework is designed to be simple yet extensible - start with basic examples and gradually add complexity as needed for your research.
+## Creating Your Own Simulation
+
+1. **Design your global state** - What shared data drives your system?
+2. **Define your actions** - What events can occur?
+3. **Create agents** - What entities respond to these events?
+4. **Add facilitation** - How do agents coordinate with each other?
+5. **Test and iterate** - Use the event-driven patterns to create emergent complexity
+
+The framework is designed for flexibility - start simple and let complex behaviors emerge from agent interactions.

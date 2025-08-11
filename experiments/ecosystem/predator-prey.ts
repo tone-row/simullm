@@ -1,4 +1,4 @@
-import { createEventSimulation, createAgent } from "../../lib/simulation.ts";
+import { createSimulation, createAgent } from "../../lib/simulation.ts";
 
 // Example: Event-driven predator-prey ecosystem
 interface EcosystemState {
@@ -161,7 +161,7 @@ const grassAgent = createAgent<EcosystemState, EcosystemAction>(
 
 // Run the ecosystem simulation
 export const runEcosystemExample = async () => {
-  const simulation = createEventSimulation<EcosystemState, EcosystemAction>({
+  const simulation = createSimulation<EcosystemState, EcosystemAction>({
     initialGlobalState: {
       rabbits: 10,
       foxes: 5,

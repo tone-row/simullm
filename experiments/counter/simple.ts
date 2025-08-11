@@ -1,4 +1,4 @@
-import { createEventSimulation, createAgent } from "../../lib/simulation.ts";
+import { createSimulation, createAgent } from "../../lib/simulation.ts";
 
 // Example: Event-driven counter simulation
 interface CounterState {
@@ -117,7 +117,7 @@ const resetAgent = createAgent<CounterState, CounterAction>(
 
 // Run the simulation
 export const runCounterExample = async () => {
-  const simulation = createEventSimulation<CounterState, CounterAction>({
+  const simulation = createSimulation<CounterState, CounterAction>({
     initialGlobalState: { value: 1, history: [1] },
     agents: [facilitator, incrementAgent, doubleAgent, resetAgent],
   });
