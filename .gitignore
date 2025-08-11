@@ -176,3 +176,7 @@ dist
 
 # Temporary testing files
 tmp/
+TODO.md
+
+# Presentation dashboards
+presentations/

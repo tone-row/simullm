@@ -30,7 +30,7 @@ export const executeTurn = async <TGlobalState>(
   // Execute each node's action in sequence
   for (let i = 0; i < updatedNodes.length; i++) {
     const node = updatedNodes[i];
-    
+
     // Prepare action parameters
     const params: ActionParams<TGlobalState, any> = {
       globalState: currentGlobalState,
@@ -39,10 +39,10 @@ export const executeTurn = async <TGlobalState>(
 
     // Execute the action
     const result = await node.action(params);
-    
+
     // Result is always { globalState, internalState? }
     currentGlobalState = result.globalState;
-    
+
     // Update internal state if provided
     if (result.internalState !== undefined) {
       updatedNodes[i] = {
@@ -86,7 +86,8 @@ export const runSimulation = async <TGlobalState>(
 
   return {
     finalState: currentState.state,
-    finalNodeStates: Object.keys(finalNodeStates).length > 0 ? finalNodeStates : undefined,
+    finalNodeStates:
+      Object.keys(finalNodeStates).length > 0 ? finalNodeStates : undefined,
     turnHistory,
     totalTurns: currentState.turn,
   };
@@ -95,7 +96,7 @@ export const runSimulation = async <TGlobalState>(
 /**
  * Utility to create a node
  */
-export const createNode = <TGlobalState, TInternalState = never>(
+export const createNode = <TGlobalState, TInternalState = any>(
   id: string,
   action: Action<TGlobalState, TInternalState>,
   initialInternalState?: TInternalState
@@ -108,6 +109,6 @@ export const createNode = <TGlobalState, TInternalState = never>(
 /**
  * Unified utility to create an action (works with both simple and internal state)
  */
-export const createAction = <TGlobalState, TInternalState = never>(
+export const createAction = <TGlobalState, TInternalState = any>(
   action: Action<TGlobalState, TInternalState>
 ): Action<TGlobalState, TInternalState> => action;
