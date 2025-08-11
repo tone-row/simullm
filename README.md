@@ -1,4 +1,4 @@
-# ABM-LLM
+# SimuLLM
 
 A TypeScript framework for creating event-driven agent-based simulations with support for LLM-powered agents.
 
@@ -22,6 +22,7 @@ Simulations are built around **agents** that respond to **actions**:
 4. **Emergent Behavior** - Complex patterns emerge from agent interactions
 
 Key concepts:
+
 - **Actions** are events dispatched through the system (e.g., `{ type: "DAY_START" }`)
 - **Agents** listen for actions and can update global state, internal state, or dispatch new actions
 - **Facilitation** emerges from agent coordination rather than pre-defined patterns
@@ -39,9 +40,7 @@ interface CounterState {
 }
 
 // 2. Define action types
-type CounterAction = 
-  | { type: "START" }
-  | { type: "INCREMENT"; amount: number };
+type CounterAction = { type: "START" } | { type: "INCREMENT"; amount: number };
 
 // 3. Create a facilitator agent
 const facilitator = createAgent<CounterState, CounterAction>(
@@ -55,10 +54,12 @@ const facilitator = createAgent<CounterState, CounterAction>(
 
 // 4. Create a counter agent
 const counter = createAgent<CounterState, CounterAction>(
-  "counter", 
+  "counter",
   (action, context) => {
     if (action.type === "INCREMENT") {
-      context.updateGlobalState(state => ({ count: state.count + action.amount }));
+      context.updateGlobalState((state) => ({
+        count: state.count + action.amount,
+      }));
     }
   }
 );
@@ -97,14 +98,20 @@ const rabbitAgent = createAgent<EcosystemState, EcosystemAction>(
   "rabbits",
   (action, context) => {
     if (action.type === "DAY_START") {
-      const grassEaten = Math.min(context.globalState.rabbits, context.globalState.grass);
+      const grassEaten = Math.min(
+        context.globalState.rabbits,
+        context.globalState.grass
+      );
       context.dispatch({ type: "RABBITS_EAT", amount: grassEaten });
     }
-    
+
     if (action.type === "RABBITS_EAT") {
       // Update rabbit population based on food
-      const newRabbits = Math.max(1, Math.floor(context.globalState.rabbits * 1.1));
-      context.updateGlobalState(state => ({ ...state, rabbits: newRabbits }));
+      const newRabbits = Math.max(
+        1,
+        Math.floor(context.globalState.rabbits * 1.1)
+      );
+      context.updateGlobalState((state) => ({ ...state, rabbits: newRabbits }));
     }
   }
 );
@@ -115,19 +122,19 @@ const grassAgent = createAgent<EcosystemState, EcosystemAction>(
   (action, context) => {
     if (action.type === "RABBITS_EAT") {
       // Reduce grass
-      context.updateGlobalState(state => ({ 
-        ...state, 
-        grass: Math.max(0, state.grass - action.amount) 
+      context.updateGlobalState((state) => ({
+        ...state,
+        grass: Math.max(0, state.grass - action.amount),
       }));
-      
+
       // Then regrow
       context.dispatch({ type: "GRASS_GROWS", amount: 10 });
     }
-    
+
     if (action.type === "GRASS_GROWS") {
-      context.updateGlobalState(state => ({ 
-        ...state, 
-        grass: Math.min(100, state.grass + action.amount) 
+      context.updateGlobalState((state) => ({
+        ...state,
+        grass: Math.min(100, state.grass + action.amount),
       }));
     }
   }
@@ -158,13 +165,16 @@ const learningAgent = createAgent<GlobalState, Action, AgentMemory>(
     if (action.type === "WORK_REQUEST") {
       // Use internal state for decision making
       const canWork = context.internalState.energy > 50;
-      
+
       if (canWork) {
-        context.updateGlobalState(state => ({ ...state, work: state.work + 10 }));
-        context.updateInternalState(state => ({ 
-          ...state, 
+        context.updateGlobalState((state) => ({
+          ...state,
+          work: state.work + 10,
+        }));
+        context.updateInternalState((state) => ({
+          ...state,
           energy: state.energy - 20,
-          lastAction: "worked"
+          lastAction: "worked",
         }));
       }
     }
@@ -177,13 +187,13 @@ const learningAgent = createAgent<GlobalState, Action, AgentMemory>(
 
 ```
 lib/                     # Core framework
-├── simulation.ts        # Event-driven simulation engine  
+├── simulation.ts        # Event-driven simulation engine
 ├── types.ts            # Type definitions
 └── simulation.test.ts  # Comprehensive test suite
 
 experiments/            # Example simulations
 ├── counter/           # Simple counter examples
-├── ecosystem/         # Predator-prey dynamics  
+├── ecosystem/         # Predator-prey dynamics
 └── market/           # Economic simulations with LLMs
 
 tmp/                   # Development examples
@@ -203,7 +213,7 @@ const facilitator = createAgent<State, Action, FacilitatorState>(
     if (action.type === "START") {
       context.dispatch({ type: "TURN_START", agentId: "player1" });
     }
-    
+
     if (action.type === "TURN_COMPLETE") {
       const nextPlayer = getNextPlayer(action.agentId);
       context.dispatch({ type: "TURN_START", agentId: nextPlayer });
@@ -232,7 +242,7 @@ const triggerAgent = createAgent<State, Action>(
 );
 
 const responderAgent = createAgent<State, Action>(
-  "responder", 
+  "responder",
   (action, context) => {
     if (action.type === "PHASE_1") {
       context.dispatch({ type: "PHASE_2" });
@@ -251,8 +261,9 @@ const responderAgent = createAgent<State, Action>(
 ### Agent Context
 
 Each agent receives a context object with:
+
 - `globalState` - Current global state (read-only)
-- `internalState` - Agent's private state (read-only)  
+- `internalState` - Agent's private state (read-only)
 - `dispatch(action)` - Dispatch new actions
 - `updateGlobalState(updater)` - Modify global state
 - `updateInternalState(updater)` - Modify agent's internal state
@@ -269,7 +280,7 @@ Each agent receives a context object with:
 # Run specific example
 bun run experiments/counter/simple.ts
 
-# Run all tests  
+# Run all tests
 bun test
 
 # Test specific tmp file
