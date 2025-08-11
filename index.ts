@@ -179,10 +179,10 @@ const htmlContent = `
     <script>
         // Data from the experiment
         const data = ${JSON.stringify(
-          result.priceHistory.map((price, i) => ({
-            turn: result.turnHistory[i],
+          result.finalState.history.price.map((price: number, i: number) => ({
+            turn: result.finalState.history.turn[i],
             price: price,
-            underlyingValue: result.underlyingValueHistory[i],
+            underlyingValue: result.finalState.history.underlyingValue[i],
           }))
         )};
 

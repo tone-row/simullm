@@ -1,4 +1,43 @@
-// Unified types for the Agent-Based Modeling framework
+// Event-driven Agent-Based Modeling framework types
+
+/**
+ * Context provided to agents when they receive actions
+ */
+export interface Context<TGlobalState, TAction> {
+  globalState: TGlobalState;
+  dispatch: (action: TAction) => void;
+  updateGlobalState: (updater: (state: TGlobalState) => TGlobalState) => void;
+  updateInternalState: (updater: (state: any) => any) => void;
+  internalState: any;
+}
+
+/**
+ * Event-driven agent that responds to actions
+ */
+export interface Agent<TGlobalState, TAction, TInternalState = any> {
+  id: string;
+  onAction: (action: TAction, context: Context<TGlobalState, TAction>) => void | Promise<void>;
+  initialInternalState?: TInternalState;
+}
+
+/**
+ * Configuration for creating an event-driven simulation
+ */
+export interface SimulationConfig<TGlobalState, TAction> {
+  initialGlobalState: TGlobalState;
+  agents: Agent<TGlobalState, TAction, any>[];
+}
+
+/**
+ * Manages action dispatch and agent coordination
+ */
+export interface ActionDispatcher<TGlobalState, TAction> {
+  dispatch: (action: TAction) => void | Promise<void>;
+  getGlobalState: () => TGlobalState;
+  getAgentInternalState: (agentId: string) => any;
+}
+
+// Legacy types for backward compatibility (if needed during transition)
 
 /**
  * Parameters passed to an action
@@ -23,38 +62,29 @@ export type Action<TGlobalState, TInternalState = never> = (
 ) => ActionResult<TGlobalState, TInternalState>;
 
 /**
- * Represents a node/agent in the simulation
+ * Represents a node/agent in the simulation (legacy)
  */
 export interface Node<TGlobalState, TInternalState = never> {
   id: string;
   action: Action<TGlobalState, TInternalState>;
-  internalState?: TInternalState; // Only present for nodes that use internal state
+  internalState?: TInternalState;
 }
 
 /**
- * Represents the simulation state
+ * Represents the simulation state (legacy)
  */
 export interface SimulationState<TGlobalState> {
-  nodes: Node<TGlobalState, any>[]; // Mixed nodes - some with internal state, some without
+  nodes: Node<TGlobalState, any>[];
   state: TGlobalState;
   turn: number;
 }
 
 /**
- * Configuration for running a simulation
- */
-export interface SimulationConfig<TGlobalState> {
-  maxTurns?: number;
-  initialState: TGlobalState;
-  nodes: Node<TGlobalState, any>[];
-}
-
-/**
- * Result of running a simulation
+ * Result of running a simulation (legacy)
  */
 export interface SimulationResult<TGlobalState> {
   finalState: TGlobalState;
-  finalNodeStates?: { [nodeId: string]: any }; // Internal states of nodes (if any)
+  finalNodeStates?: { [nodeId: string]: any };
   turnHistory: TGlobalState[];
   totalTurns: number;
 }
