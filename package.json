@@ -1,5 +1,5 @@
 {
-  "name": "abm-llm",
+  "name": "simullm",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {

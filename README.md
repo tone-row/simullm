@@ -1,4 +1,4 @@
-# Agent-Based Modeling Framework
+# SimuLLM
 
 A TypeScript framework for creating agent-based simulations with support for LLM-powered agents.
 
