@@ -23,5 +23,15 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "experiments",
+    "tmp",
+    "index.ts"
+  ],
+  "include": [
+    "lib/**/*.ts",
+    "test-exports.ts"
+  ]
 }
