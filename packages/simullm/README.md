@@ -174,6 +174,25 @@ const simulation = createSimulation({
 });
 ```
 
+## Development
+
+### Release Process
+
+Use the automated release script:
+
+```bash
+bun run release
+```
+
+This handles:
+- Version bumping (patch/minor/major)
+- Changelog updates
+- Git commit and tagging
+- Pushing to remote
+- npm publishing
+
+See `scripts/README.md` for details.
+
 ## License
 
 MIT
