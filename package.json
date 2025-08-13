@@ -1,24 +1,18 @@
 {
-  "name": "simullm",
+  "name": "simullm-workspace",
   "version": "0.1.0",
   "description": "Event-driven Agent-Based Modeling framework for TypeScript",
-  "main": "lib/index.ts",
-  "module": "lib/index.ts",
-  "types": "lib/index.ts",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./lib/index.ts",
-      "import": "./lib/index.ts"
-    }
-  },
-  "files": [
-    "lib/**/*.ts",
-    "README.md"
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:www": "bun --cwd apps/www dev",
+    "build:www": "bun --cwd apps/www build",
+    "test:simullm": "bun --cwd packages/simullm test"
   },
   "keywords": [
     "agent-based-modeling",
@@ -33,14 +27,8 @@
     "@types/bun": "latest",
     "typescript": "^5.0.0"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
   "dependencies": {
-    "@ai-sdk/openai": "^1.3.23",
-    "@openrouter/ai-sdk-provider": "^0.7.3",
-    "ai": "^4.3.19",
-    "dotenv": "^17.2.1",
-    "zod": "^3"
+    "@ai-sdk/react": "^2.0.11",
+    "ai": "^5.0.11"
   }
 }

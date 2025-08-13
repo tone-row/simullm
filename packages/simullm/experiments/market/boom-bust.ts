@@ -336,6 +336,11 @@ export const runBoomBustExperiment = async () => {
       createValueTrader(),
       createTrendsTrader(),
     ],
+    shouldExit: ({ globalState, agentStates }) => {
+      // Exit when we've completed the maximum number of turns
+      const facilitatorState = agentStates["facilitator"];
+      return facilitatorState && globalState.turn >= facilitatorState.maxTurns;
+    },
   });
 
   console.log(`Initial price: $100, Underlying Value: $100`);

@@ -174,6 +174,10 @@ export const runEcosystemExample = async () => {
       },
     },
     agents: [ecosystemFacilitator, rabbitAgent, foxAgent, grassAgent],
+    shouldExit: ({ globalState, agentStates }) => {
+      const facilitatorState = agentStates["facilitator"];
+      return facilitatorState && facilitatorState.currentTurn > facilitatorState.maxTurns;
+    },
   });
 
   // Start the simulation

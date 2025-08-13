@@ -3,6 +3,7 @@ import type {
   Context,
   SimulationConfig,
   ActionDispatcher,
+  ExitContext,
 } from "./types.ts";
 
 /**
@@ -14,9 +15,13 @@ export class EventSimulation<TGlobalState, TAction> {
   private agentInternalStates: Map<string, any> = new Map();
   private actionQueue: TAction[] = [];
   private isProcessing = false;
+  private actionCount = 0;
+  private hasExited = false;
+  private shouldExit: (context: ExitContext<TGlobalState, TAction>) => boolean;
 
   constructor(config: SimulationConfig<TGlobalState, TAction>) {
     this.globalState = config.initialGlobalState;
+    this.shouldExit = config.shouldExit;
     
     for (const agent of config.agents) {
       this.agents.set(agent.id, agent);
@@ -30,6 +35,10 @@ export class EventSimulation<TGlobalState, TAction> {
    * Dispatch an action to all agents
    */
   async dispatch(action: TAction): Promise<void> {
+    if (this.hasExited) {
+      return; // Don't process any more actions after exit
+    }
+    
     this.actionQueue.push(action);
     
     if (!this.isProcessing) {
@@ -54,6 +63,22 @@ export class EventSimulation<TGlobalState, TAction> {
       }
       
       await Promise.all(promises);
+      
+      // Increment action count and check exit condition
+      this.actionCount++;
+      const exitContext: ExitContext<TGlobalState, TAction> = {
+        globalState: this.globalState,
+        agentStates: this.getAllAgentStates(),
+        lastAction: action,
+        actionCount: this.actionCount,
+      };
+      
+      if (this.shouldExit(exitContext)) {
+        // Clear remaining actions and exit
+        this.actionQueue.length = 0;
+        this.hasExited = true;
+        break;
+      }
       
       // Add a small delay to prevent infinite synchronous loops
       // and allow setTimeout/Promise resolution in calling code
@@ -105,10 +130,24 @@ export class EventSimulation<TGlobalState, TAction> {
    */
   getAllAgentStates(): { [agentId: string]: any } {
     const result: { [agentId: string]: any } = {};
-    for (const [agentId, state] of this.agentInternalStates) {
-      result[agentId] = state;
+    for (const [agentId] of this.agents) {
+      result[agentId] = this.agentInternalStates.get(agentId);
     }
     return result;
+  }
+
+  /**
+   * Get current action count
+   */
+  getActionCount(): number {
+    return this.actionCount;
+  }
+
+  /**
+   * Check if simulation has exited
+   */
+  hasSimulationExited(): boolean {
+    return this.hasExited;
   }
 }
 

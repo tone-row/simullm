@@ -137,6 +137,10 @@ export const runInternalStateExample = async () => {
   const simulation = createSimulation<GlobalState, WorkAction>({
     initialGlobalState: { totalValue: 0, history: [0] },
     agents: [workFacilitator, learningAgent, tiredAgent],
+    shouldExit: ({ agentStates }) => {
+      const facilitatorState = agentStates["facilitator"];
+      return facilitatorState && facilitatorState.currentTurn > facilitatorState.maxTurns;
+    },
   });
 
   // Start the simulation

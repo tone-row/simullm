@@ -120,6 +120,10 @@ export const runCounterExample = async () => {
   const simulation = createSimulation<CounterState, CounterAction>({
     initialGlobalState: { value: 1, history: [1] },
     agents: [facilitator, incrementAgent, doubleAgent, resetAgent],
+    shouldExit: ({ agentStates }) => {
+      const facilitatorState = agentStates["facilitator"];
+      return facilitatorState && facilitatorState.completedTurns >= facilitatorState.maxTurns;
+    },
   });
 
   // Start the simulation

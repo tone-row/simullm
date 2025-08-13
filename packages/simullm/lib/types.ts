@@ -21,11 +21,22 @@ export interface Agent<TGlobalState, TAction, TInternalState = any> {
 }
 
 /**
+ * Context provided to shouldExit function for exit condition evaluation
+ */
+export interface ExitContext<TGlobalState, TAction> {
+  globalState: TGlobalState;
+  agentStates: { [agentId: string]: any };
+  lastAction: TAction;
+  actionCount: number;
+}
+
+/**
  * Configuration for creating an event-driven simulation
  */
 export interface SimulationConfig<TGlobalState, TAction> {
   initialGlobalState: TGlobalState;
   agents: Agent<TGlobalState, TAction, any>[];
+  shouldExit: (context: ExitContext<TGlobalState, TAction>) => boolean;
 }
 
 /**
