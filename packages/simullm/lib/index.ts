@@ -7,11 +7,7 @@ export type {
   Context,
   SimulationConfig,
   ActionDispatcher,
-} from "./types.ts";
+} from "./types";
 
 // Export the main simulation class and utilities
-export {
-  EventSimulation,
-  createSimulation,
-  createAgent,
-} from "./simulation.ts";
+export { EventSimulation, createSimulation, createAgent } from "./simulation";

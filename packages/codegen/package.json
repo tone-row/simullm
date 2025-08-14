@@ -1,0 +1,23 @@
+{
+  "name": "simullm-codegen",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "extract-types": "bun run src/extractSimullmTypes.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.3",
+    "@anthropic-ai/sdk": "^0.59.0",
+    "@openrouter/ai-sdk-provider": "1.0.0-beta.7",
+    "@tonerow/agent-framework": "^0.1.0",
+    "ai": "^5.0.11",
+    "simullm": "^0.2.0",
+    "zod": "^4.0.17"
+  }
+}

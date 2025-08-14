@@ -1,11 +1,48 @@
-import type {
-  Agent,
-  Context,
-  SimulationConfig,
-  ActionDispatcher,
-  ExitContext,
-} from "./types";
+export function getSimullmSource(): string {
+  return `// simullm - Event-driven Agent-Based Modeling framework for TypeScript
+// Complete source code compilation
 
+// ===== types.ts =====
+// Event-driven Agent-Based Modeling framework types
+
+/**
+ * Context provided to agents when they receive actions
+ */
+export interface Context<TGlobalState, TAction> {
+  globalState: TGlobalState;
+  dispatch: (action: TAction) => void;
+  updateGlobalState: (updater: (state: TGlobalState) => TGlobalState) => void;
+  updateInternalState: (updater: (state: any) => any) => void;
+  internalState: any;
+}
+
+/**
+ * Event-driven agent that responds to actions
+ */
+export interface Agent<TGlobalState, TAction, TInternalState = any> {
+  id: string;
+  onAction: (action: TAction, context: Context<TGlobalState, TAction>) => void | Promise<void>;
+  initialInternalState?: TInternalState;
+}
+
+/**
+ * Configuration for creating an event-driven simulation
+ */
+export interface SimulationConfig<TGlobalState, TAction> {
+  initialGlobalState: TGlobalState;
+  agents: Agent<TGlobalState, TAction, any>[];
+}
+
+/**
+ * Manages action dispatch and agent coordination
+ */
+export interface ActionDispatcher<TGlobalState, TAction> {
+  dispatch: (action: TAction) => void | Promise<void>;
+  getGlobalState: () => TGlobalState;
+  getAgentInternalState: (agentId: string) => any;
+}
+
+// ===== simulation.ts =====
 /**
  * Event-driven simulation engine
  */
@@ -15,20 +52,10 @@ export class EventSimulation<TGlobalState, TAction> {
   private agentInternalStates: Map<string, any> = new Map();
   private actionQueue: TAction[] = [];
   private isProcessing = false;
-  private actionCount = 0;
-  private hasExited = false;
-  private shouldExit: (context: ExitContext<TGlobalState, TAction>) => boolean;
-  private exitPromise: Promise<void>;
-  private resolveExit!: () => void;
 
   constructor(config: SimulationConfig<TGlobalState, TAction>) {
     this.globalState = config.initialGlobalState;
-    this.shouldExit = config.shouldExit;
-
-    this.exitPromise = new Promise<void>((resolve) => {
-      this.resolveExit = resolve;
-    });
-
+    
     for (const agent of config.agents) {
       this.agents.set(agent.id, agent);
       if (agent.initialInternalState !== undefined) {
@@ -41,12 +68,8 @@ export class EventSimulation<TGlobalState, TAction> {
    * Dispatch an action to all agents
    */
   async dispatch(action: TAction): Promise<void> {
-    if (this.hasExited) {
-      return; // Don't process any more actions after exit
-    }
-
     this.actionQueue.push(action);
-
+    
     if (!this.isProcessing) {
       await this.processActionQueue();
     }
@@ -60,37 +83,20 @@ export class EventSimulation<TGlobalState, TAction> {
 
     while (this.actionQueue.length > 0) {
       const action = this.actionQueue.shift()!;
-
+      
       // Send action to all agents
       const promises: Promise<void>[] = [];
       for (const [agentId, agent] of this.agents) {
         const context = this.createContext(agentId);
         promises.push(Promise.resolve(agent.onAction(action, context)));
       }
-
+      
       await Promise.all(promises);
-
-      // Increment action count and check exit condition
-      this.actionCount++;
-      const exitContext: ExitContext<TGlobalState, TAction> = {
-        globalState: this.globalState,
-        agentStates: this.getAllAgentStates(),
-        lastAction: action,
-        actionCount: this.actionCount,
-      };
-
-      if (this.shouldExit(exitContext)) {
-        // Clear remaining actions and exit
-        this.actionQueue.length = 0;
-        this.hasExited = true;
-        this.resolveExit();
-        break;
-      }
-
+      
       // Add a small delay to prevent infinite synchronous loops
       // and allow setTimeout/Promise resolution in calling code
       if (this.actionQueue.length > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
     }
 
@@ -105,9 +111,6 @@ export class EventSimulation<TGlobalState, TAction> {
       globalState: this.globalState,
       dispatch: (action: TAction) => {
         this.actionQueue.push(action);
-        if (!this.isProcessing) {
-          this.processActionQueue();
-        }
       },
       updateGlobalState: (updater: (state: TGlobalState) => TGlobalState) => {
         this.globalState = updater(this.globalState);
@@ -118,10 +121,6 @@ export class EventSimulation<TGlobalState, TAction> {
         this.agentInternalStates.set(agentId, newState);
       },
       internalState: this.agentInternalStates.get(agentId),
-      allAgents: Array.from(this.agents.keys()).map((id) => ({
-        id,
-        internalState: this.agentInternalStates.get(id),
-      })),
     };
   }
 
@@ -144,31 +143,10 @@ export class EventSimulation<TGlobalState, TAction> {
    */
   getAllAgentStates(): { [agentId: string]: any } {
     const result: { [agentId: string]: any } = {};
-    for (const [agentId] of this.agents) {
-      result[agentId] = this.agentInternalStates.get(agentId);
+    for (const [agentId, state] of this.agentInternalStates) {
+      result[agentId] = state;
     }
     return result;
-  }
-
-  /**
-   * Get current action count
-   */
-  getActionCount(): number {
-    return this.actionCount;
-  }
-
-  /**
-   * Check if simulation has exited
-   */
-  hasSimulationExited(): boolean {
-    return this.hasExited;
-  }
-
-  /**
-   * Returns a promise that resolves when the simulation exits
-   */
-  exit(): Promise<void> {
-    return this.exitPromise;
   }
 }
 
@@ -186,13 +164,11 @@ export const createSimulation = <TGlobalState, TAction>(
  */
 export const createAgent = <TGlobalState, TAction, TInternalState = any>(
   id: string,
-  onAction: (
-    action: TAction,
-    context: Context<TGlobalState, TAction>
-  ) => void | Promise<void>,
+  onAction: (action: TAction, context: Context<TGlobalState, TAction>) => void | Promise<void>,
   initialInternalState?: TInternalState
 ): Agent<TGlobalState, TAction, TInternalState> => ({
   id,
   onAction,
   initialInternalState,
-});
+});`;
+}
