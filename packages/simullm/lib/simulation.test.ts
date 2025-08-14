@@ -425,6 +425,167 @@ describe("ABM Framework", () => {
           expect(simulation.getGlobalState()).toBe(3); // Should still be 1 + 2 = 3
           expect(simulation.getActionCount()).toBe(2);
         });
+
+        it("should resolve exit promise when simulation exits", async () => {
+          const agent = createAgent<number, TestAction>(
+            "test-agent",
+            (action, context) => {
+              if (action.type === "INCREMENT") {
+                context.updateGlobalState(state => state + action.amount);
+              }
+            }
+          );
+
+          const simulation = createSimulation<number, TestAction>({
+            initialGlobalState: 0,
+            agents: [agent],
+            shouldExit: ({ actionCount }) => actionCount >= 2,
+          });
+
+          // Start dispatching actions
+          simulation.dispatch({ type: "INCREMENT", amount: 1 });
+          simulation.dispatch({ type: "INCREMENT", amount: 2 });
+
+          // Wait for simulation to complete
+          await simulation.exit();
+
+          expect(simulation.hasSimulationExited()).toBe(true);
+          expect(simulation.getGlobalState()).toBe(3);
+          expect(simulation.getActionCount()).toBe(2);
+        });
+
+        it("should handle exit promise with async actions", async () => {
+          const agent = createAgent<number, TestAction>(
+            "async-agent",
+            async (action, context) => {
+              if (action.type === "INCREMENT") {
+                await new Promise(resolve => setTimeout(resolve, 10));
+                context.updateGlobalState(state => state + action.amount);
+              }
+            }
+          );
+
+          const simulation = createSimulation<number, TestAction>({
+            initialGlobalState: 0,
+            agents: [agent],
+            shouldExit: ({ globalState }) => globalState >= 5,
+          });
+
+          // Start dispatching actions
+          simulation.dispatch({ type: "INCREMENT", amount: 3 });
+          simulation.dispatch({ type: "INCREMENT", amount: 4 });
+
+          // Wait for simulation to complete
+          await simulation.exit();
+
+          expect(simulation.hasSimulationExited()).toBe(true);
+          expect(simulation.getGlobalState()).toBe(7);
+        });
+
+        it("should handle exit promise with cascading actions", async () => {
+          const agent = createAgent<number, TestAction>(
+            "cascading-agent",
+            (action, context) => {
+              if (action.type === "START") {
+                context.dispatch({ type: "INCREMENT", amount: 1 });
+              } else if (action.type === "INCREMENT") {
+                context.updateGlobalState(state => state + action.amount);
+                if (context.globalState < 3) {
+                  context.dispatch({ type: "INCREMENT", amount: 1 });
+                }
+              }
+            }
+          );
+
+          const simulation = createSimulation<number, TestAction>({
+            initialGlobalState: 0,
+            agents: [agent],
+            shouldExit: ({ globalState }) => globalState >= 3,
+          });
+
+          // Start the simulation
+          simulation.dispatch({ type: "START" });
+
+          // Wait for simulation to complete
+          await simulation.exit();
+
+          expect(simulation.hasSimulationExited()).toBe(true);
+          expect(simulation.getGlobalState()).toBe(3);
+        });
+
+        it("should handle multiple awaits on same exit promise", async () => {
+          const agent = createAgent<number, TestAction>(
+            "test-agent",
+            (action, context) => {
+              if (action.type === "INCREMENT") {
+                context.updateGlobalState(state => state + action.amount);
+              }
+            }
+          );
+
+          const simulation = createSimulation<number, TestAction>({
+            initialGlobalState: 0,
+            agents: [agent],
+            shouldExit: ({ actionCount }) => actionCount >= 1,
+          });
+
+          // Start dispatching
+          simulation.dispatch({ type: "INCREMENT", amount: 5 });
+
+          // Multiple awaits should all resolve
+          const [result1, result2, result3] = await Promise.all([
+            simulation.exit(),
+            simulation.exit(),
+            simulation.exit(),
+          ]);
+
+          expect(result1).toBeUndefined();
+          expect(result2).toBeUndefined();
+          expect(result3).toBeUndefined();
+          expect(simulation.hasSimulationExited()).toBe(true);
+        });
+
+        it("should process actions dispatched asynchronously by agents - REPRODUCTION TEST", async () => {
+          let messageCount = 0;
+          const receivedMessages: string[] = [];
+
+          const alice = createAgent<number, TestAction>(
+            "alice",
+            (action, context) => {
+              if (action.type === "START") {
+                messageCount++;
+                receivedMessages.push(`Alice message ${messageCount}`);
+                
+                // Simulate async action dispatch (like setTimeout in the bug report)
+                setTimeout(() => {
+                  if (messageCount < 3) {
+                    context.dispatch({ type: "START" });
+                  }
+                }, 10);
+              }
+            }
+          );
+
+          const simulation = createSimulation<number, TestAction>({
+            initialGlobalState: 0,
+            agents: [alice],
+            shouldExit: ({ actionCount }) => actionCount >= 5, // Allow plenty of actions
+          });
+
+          await simulation.dispatch({ type: "START" });
+
+          // Wait a bit for async actions to potentially process
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // If the bug exists, Alice should only speak once
+          // If fixed, Alice should speak 3 times
+          expect(messageCount).toBe(3);
+          expect(receivedMessages).toEqual([
+            "Alice message 1",
+            "Alice message 2", 
+            "Alice message 3"
+          ]);
+        });
       });
     });
   });

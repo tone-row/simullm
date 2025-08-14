@@ -18,10 +18,16 @@ export class EventSimulation<TGlobalState, TAction> {
   private actionCount = 0;
   private hasExited = false;
   private shouldExit: (context: ExitContext<TGlobalState, TAction>) => boolean;
+  private exitPromise: Promise<void>;
+  private resolveExit!: () => void;
 
   constructor(config: SimulationConfig<TGlobalState, TAction>) {
     this.globalState = config.initialGlobalState;
     this.shouldExit = config.shouldExit;
+    
+    this.exitPromise = new Promise<void>((resolve) => {
+      this.resolveExit = resolve;
+    });
     
     for (const agent of config.agents) {
       this.agents.set(agent.id, agent);
@@ -77,6 +83,7 @@ export class EventSimulation<TGlobalState, TAction> {
         // Clear remaining actions and exit
         this.actionQueue.length = 0;
         this.hasExited = true;
+        this.resolveExit();
         break;
       }
       
@@ -98,6 +105,9 @@ export class EventSimulation<TGlobalState, TAction> {
       globalState: this.globalState,
       dispatch: (action: TAction) => {
         this.actionQueue.push(action);
+        if (!this.isProcessing) {
+          this.processActionQueue();
+        }
       },
       updateGlobalState: (updater: (state: TGlobalState) => TGlobalState) => {
         this.globalState = updater(this.globalState);
@@ -148,6 +158,13 @@ export class EventSimulation<TGlobalState, TAction> {
    */
   hasSimulationExited(): boolean {
     return this.hasExited;
+  }
+
+  /**
+   * Returns a promise that resolves when the simulation exits
+   */
+  exit(): Promise<void> {
+    return this.exitPromise;
   }
 }
 

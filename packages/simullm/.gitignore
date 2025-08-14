@@ -1,0 +1,5 @@
+tmp/
+.DS_Store
+presentations/
+.env.local
+node_modules/
