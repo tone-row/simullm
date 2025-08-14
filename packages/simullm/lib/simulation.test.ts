@@ -1,12 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import {
-  createSimulation,
-  createAgent,
-} from "./simulation.ts";
+import { createSimulation, createAgent } from "./simulation.ts";
 
 describe("ABM Framework", () => {
   describe("Event-Driven Framework (Primary API)", () => {
-    type TestAction = 
+    type TestAction =
       | { type: "START" }
       | { type: "INCREMENT"; amount: number }
       | { type: "DOUBLE" }
@@ -36,12 +33,14 @@ describe("ABM Framework", () => {
           shouldExit: () => false,
         });
 
-        expect(simulation.getAgentInternalState("test-agent")).toBe("initial-state");
+        expect(simulation.getAgentInternalState("test-agent")).toBe(
+          "initial-state"
+        );
       });
 
       it("should dispatch actions to all agents", async () => {
         const receivedActions: TestAction[] = [];
-        
+
         const agent1 = createAgent<number, TestAction>(
           "agent1",
           (action, context) => {
@@ -50,7 +49,7 @@ describe("ABM Framework", () => {
         );
 
         const agent2 = createAgent<number, TestAction>(
-          "agent2", 
+          "agent2",
           (action, context) => {
             receivedActions.push(action);
           }
@@ -74,7 +73,7 @@ describe("ABM Framework", () => {
           "counter",
           (action, context) => {
             if (action.type === "INCREMENT") {
-              context.updateGlobalState(state => state + action.amount);
+              context.updateGlobalState((state) => state + action.amount);
             }
           }
         );
@@ -116,7 +115,9 @@ describe("ABM Framework", () => {
 
         await simulation.dispatch({ type: "INCREMENT", amount: 3 });
 
-        expect(simulation.getAgentInternalState("stateful-agent")).toEqual({ counter: 3 });
+        expect(simulation.getAgentInternalState("stateful-agent")).toEqual({
+          counter: 3,
+        });
       });
 
       it("should handle cascading actions", async () => {
@@ -138,7 +139,7 @@ describe("ABM Framework", () => {
             actionLog.push(`agent2 received ${action.type}`);
             if (action.type === "INCREMENT") {
               context.dispatch({ type: "DOUBLE" });
-              context.updateGlobalState(state => state + action.amount);
+              context.updateGlobalState((state) => state + action.amount);
             }
           }
         );
@@ -148,7 +149,7 @@ describe("ABM Framework", () => {
           (action, context) => {
             actionLog.push(`agent3 received ${action.type}`);
             if (action.type === "DOUBLE") {
-              context.updateGlobalState(state => state * 2);
+              context.updateGlobalState((state) => state * 2);
             }
           }
         );
@@ -164,11 +165,11 @@ describe("ABM Framework", () => {
         // Should process: START → INCREMENT → DOUBLE
         expect(actionLog).toEqual([
           "agent1 received START",
-          "agent2 received START", 
+          "agent2 received START",
           "agent3 received START",
           "agent1 received INCREMENT",
           "agent2 received INCREMENT",
-          "agent3 received INCREMENT", 
+          "agent3 received INCREMENT",
           "agent1 received DOUBLE",
           "agent2 received DOUBLE",
           "agent3 received DOUBLE",
@@ -183,8 +184,8 @@ describe("ABM Framework", () => {
           "async-agent",
           async (action, context) => {
             if (action.type === "INCREMENT") {
-              await new Promise(resolve => setTimeout(resolve, 1));
-              context.updateGlobalState(state => state + action.amount);
+              await new Promise((resolve) => setTimeout(resolve, 1));
+              context.updateGlobalState((state) => state + action.amount);
             }
           }
         );
@@ -208,7 +209,7 @@ describe("ABM Framework", () => {
             (action, context) => {
               receivedActionCount++;
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
                 // Dispatch another action to test cascading
                 context.dispatch({ type: "DOUBLE" });
               }
@@ -234,7 +235,7 @@ describe("ABM Framework", () => {
             "counter-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -273,7 +274,7 @@ describe("ABM Framework", () => {
           const simulation = createSimulation<number, TestAction>({
             initialGlobalState: 0,
             agents: [agent],
-            shouldExit: ({ agentStates }) => 
+            shouldExit: ({ agentStates }) =>
               agentStates["stateful-agent"]?.value >= 5,
           });
 
@@ -281,7 +282,9 @@ describe("ABM Framework", () => {
           await simulation.dispatch({ type: "INCREMENT", amount: 4 }); // value = 6, should exit after this
           await simulation.dispatch({ type: "INCREMENT", amount: 1 }); // Should not be processed
 
-          expect(simulation.getAgentInternalState("stateful-agent")).toEqual({ value: 6 });
+          expect(simulation.getAgentInternalState("stateful-agent")).toEqual({
+            value: 6,
+          });
           expect(simulation.getActionCount()).toBe(2);
         });
 
@@ -290,7 +293,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -316,7 +319,7 @@ describe("ABM Framework", () => {
               if (action.type === "START") {
                 context.dispatch({ type: "INCREMENT", amount: 1 });
               } else if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
                 if (context.globalState < 5) {
                   context.dispatch({ type: "INCREMENT", amount: 1 });
                 }
@@ -327,7 +330,7 @@ describe("ABM Framework", () => {
           const simulation = createSimulation<number, TestAction>({
             initialGlobalState: 0,
             agents: [agent],
-            shouldExit: ({ globalState, actionCount }) => 
+            shouldExit: ({ globalState, actionCount }) =>
               globalState >= 3 || actionCount >= 10,
           });
 
@@ -343,7 +346,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -373,7 +376,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -391,9 +394,11 @@ describe("ABM Framework", () => {
 
           // First dispatch should succeed
           await simulation.dispatch({ type: "INCREMENT", amount: 1 });
-          
+
           // Second dispatch should throw when exit condition throws
-          await expect(simulation.dispatch({ type: "INCREMENT", amount: 2 })).rejects.toThrow("Exit condition error");
+          await expect(
+            simulation.dispatch({ type: "INCREMENT", amount: 2 })
+          ).rejects.toThrow("Exit condition error");
         });
 
         it("should correctly report simulation exit status", async () => {
@@ -401,7 +406,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -431,7 +436,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -459,8 +464,8 @@ describe("ABM Framework", () => {
             "async-agent",
             async (action, context) => {
               if (action.type === "INCREMENT") {
-                await new Promise(resolve => setTimeout(resolve, 10));
-                context.updateGlobalState(state => state + action.amount);
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -489,7 +494,7 @@ describe("ABM Framework", () => {
               if (action.type === "START") {
                 context.dispatch({ type: "INCREMENT", amount: 1 });
               } else if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
                 if (context.globalState < 3) {
                   context.dispatch({ type: "INCREMENT", amount: 1 });
                 }
@@ -518,7 +523,7 @@ describe("ABM Framework", () => {
             "test-agent",
             (action, context) => {
               if (action.type === "INCREMENT") {
-                context.updateGlobalState(state => state + action.amount);
+                context.updateGlobalState((state) => state + action.amount);
               }
             }
           );
@@ -555,7 +560,7 @@ describe("ABM Framework", () => {
               if (action.type === "START") {
                 messageCount++;
                 receivedMessages.push(`Alice message ${messageCount}`);
-                
+
                 // Simulate async action dispatch (like setTimeout in the bug report)
                 setTimeout(() => {
                   if (messageCount < 3) {
@@ -575,15 +580,15 @@ describe("ABM Framework", () => {
           await simulation.dispatch({ type: "START" });
 
           // Wait a bit for async actions to potentially process
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
 
           // If the bug exists, Alice should only speak once
           // If fixed, Alice should speak 3 times
           expect(messageCount).toBe(3);
           expect(receivedMessages).toEqual([
             "Alice message 1",
-            "Alice message 2", 
-            "Alice message 3"
+            "Alice message 2",
+            "Alice message 3",
           ]);
         });
 
@@ -596,19 +601,26 @@ describe("ABM Framework", () => {
 
             let capturedAllAgents: any = null;
 
-            const coordinator = createAgent<number, TestAction, CoordinationState>(
+            const coordinator = createAgent<
+              number,
+              TestAction,
+              CoordinationState
+            >(
               "coordinator",
               (action, context) => {
                 if (action.type === "START") {
                   capturedAllAgents = context.allAgents;
-                  context.updateInternalState(state => ({ ...state, status: "coordinating" }));
+                  context.updateInternalState((state) => ({
+                    ...state,
+                    status: "coordinating",
+                  }));
                 }
               },
               { role: "leader", status: "idle" }
             );
 
             const worker1 = createAgent<number, TestAction, CoordinationState>(
-              "worker1", 
+              "worker1",
               (action, context) => {},
               { role: "worker", status: "waiting" }
             );
@@ -628,9 +640,18 @@ describe("ABM Framework", () => {
             await simulation.dispatch({ type: "START" });
 
             expect(capturedAllAgents).toEqual([
-              { id: "coordinator", internalState: { role: "leader", status: "idle" } },
-              { id: "worker1", internalState: { role: "worker", status: "waiting" } },
-              { id: "worker2", internalState: { role: "worker", status: "ready" } },
+              {
+                id: "coordinator",
+                internalState: { role: "leader", status: "idle" },
+              },
+              {
+                id: "worker1",
+                internalState: { role: "worker", status: "waiting" },
+              },
+              {
+                id: "worker2",
+                internalState: { role: "worker", status: "ready" },
+              },
             ]);
           });
 
@@ -646,18 +667,28 @@ describe("ABM Framework", () => {
                 if (action.type === "START") {
                   // Find available workers based on their internal states
                   const availableWorkers = context.allAgents
-                    .filter(agent => agent.id !== "dispatcher" && !agent.internalState?.isWorking)
-                    .map(agent => agent.id);
+                    .filter(
+                      (agent) =>
+                        agent.id !== "dispatcher" &&
+                        !agent.internalState?.isWorking
+                    )
+                    .map((agent) => agent.id);
 
                   if (availableWorkers.length > 0) {
                     // Assign tasks to available workers
-                    availableWorkers.forEach(workerId => {
-                      context.dispatch({ type: "COMPLETED", agentId: workerId });
+                    availableWorkers.forEach((workerId) => {
+                      context.dispatch({
+                        type: "COMPLETED",
+                        agentId: workerId,
+                      });
                     });
-                    
-                    context.updateInternalState(state => ({
+
+                    context.updateInternalState((state) => ({
                       ...state,
-                      taskQueue: state.taskQueue.filter((_: string, index: number) => index >= availableWorkers.length)
+                      taskQueue: state.taskQueue.filter(
+                        (_: string, index: number) =>
+                          index >= availableWorkers.length
+                      ),
                     }));
                   }
                 }
@@ -668,20 +699,32 @@ describe("ABM Framework", () => {
             const worker1 = createAgent<number, TestAction, TaskState>(
               "worker1",
               (action, context) => {
-                if (action.type === "COMPLETED" && action.agentId === "worker1") {
-                  context.updateInternalState(state => ({ ...state, isWorking: true }));
-                  context.updateGlobalState(state => state + 1);
+                if (
+                  action.type === "COMPLETED" &&
+                  action.agentId === "worker1"
+                ) {
+                  context.updateInternalState((state) => ({
+                    ...state,
+                    isWorking: true,
+                  }));
+                  context.updateGlobalState((state) => state + 1);
                 }
               },
               { taskQueue: [], isWorking: false }
             );
 
             const worker2 = createAgent<number, TestAction, TaskState>(
-              "worker2", 
+              "worker2",
               (action, context) => {
-                if (action.type === "COMPLETED" && action.agentId === "worker2") {
-                  context.updateInternalState(state => ({ ...state, isWorking: true }));
-                  context.updateGlobalState(state => state + 1);
+                if (
+                  action.type === "COMPLETED" &&
+                  action.agentId === "worker2"
+                ) {
+                  context.updateInternalState((state) => ({
+                    ...state,
+                    isWorking: true,
+                  }));
+                  context.updateGlobalState((state) => state + 1);
                 }
               },
               { taskQueue: [], isWorking: true } // Already working
@@ -697,11 +740,17 @@ describe("ABM Framework", () => {
 
             // Only worker1 should have been assigned a task (worker2 was already working)
             expect(simulation.getGlobalState()).toBe(1);
-            expect(simulation.getAgentInternalState("worker1").isWorking).toBe(true);
-            expect(simulation.getAgentInternalState("worker2").isWorking).toBe(true);
-            
+            expect(simulation.getAgentInternalState("worker1").isWorking).toBe(
+              true
+            );
+            expect(simulation.getAgentInternalState("worker2").isWorking).toBe(
+              true
+            );
+
             // Task queue should be reduced by 1 (only worker1 got a task)
-            expect(simulation.getAgentInternalState("dispatcher").taskQueue).toEqual(["task2", "task3"]);
+            expect(
+              simulation.getAgentInternalState("dispatcher").taskQueue
+            ).toEqual(["task2", "task3"]);
           });
 
           it("should provide consistent allAgents state across action processing", async () => {
@@ -711,8 +760,10 @@ describe("ABM Framework", () => {
               "observer",
               (action, context) => {
                 // Capture allAgents state at each action
-                allAgentsSnapshots.push(JSON.parse(JSON.stringify(context.allAgents)));
-                
+                allAgentsSnapshots.push(
+                  JSON.parse(JSON.stringify(context.allAgents))
+                );
+
                 if (action.type === "START") {
                   context.dispatch({ type: "INCREMENT", amount: 1 });
                 }
@@ -724,9 +775,13 @@ describe("ABM Framework", () => {
               (action, context) => {
                 // Capture allAgents state when this agent processes actions
                 if (action.type === "INCREMENT") {
-                  allAgentsSnapshots.push(JSON.parse(JSON.stringify(context.allAgents)));
-                  context.updateInternalState(state => ({ count: state.count + action.amount }));
-                  context.updateGlobalState(state => state + action.amount);
+                  allAgentsSnapshots.push(
+                    JSON.parse(JSON.stringify(context.allAgents))
+                  );
+                  context.updateInternalState((state) => ({
+                    count: state.count + action.amount,
+                  }));
+                  context.updateGlobalState((state) => state + action.amount);
                 }
               },
               { count: 0 }
@@ -742,21 +797,23 @@ describe("ABM Framework", () => {
 
             // Should have captured 3 snapshots:
             // 1. Observer during START action
-            // 2. Counter during START action  
+            // 2. Counter during START action
             // 3. Counter during INCREMENT action
             expect(allAgentsSnapshots).toHaveLength(3);
 
             // All snapshots should show counter with initial state (0)
             // because allAgents reflects state at the START of each action processing
-            allAgentsSnapshots.forEach(snapshot => {
+            allAgentsSnapshots.forEach((snapshot) => {
               expect(snapshot).toContainEqual({
-                id: "counter", 
-                internalState: { count: 0 }
+                id: "counter",
+                internalState: { count: 0 },
               });
             });
 
             // But after actions are processed, the counter's state should be updated
-            expect(simulation.getAgentInternalState("counter")).toEqual({ count: 1 });
+            expect(simulation.getAgentInternalState("counter")).toEqual({
+              count: 1,
+            });
           });
         });
       });

@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.4",
     "@ai-sdk/react": "^2.0.11",
     "@openrouter/ai-sdk-provider": "^1.1.2",
+    "@simullm/codegen": "workspace:*",
     "@tonerow/agent-framework": "^0.1.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "ai": "^5",

@@ -1,4 +1,4 @@
-import { getSimullmSource } from "@/lib/compile-simullm";
+import { getSimullmSource } from "./compile-simullm";
 
 export function getSystemPrompt(): string {
   return `You are an AI assistant that helps users create **generative agent-based modeling simulations** using the simullm TypeScript framework. These are simulations where agents use Large Language Models (LLMs) to generate realistic, contextual responses and behaviors.

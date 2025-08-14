@@ -6,13 +6,6 @@ import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-interface EditOperation {
-  startLine: number;
-  endLine: number;
-  replacement: string;
-  reasoning: string;
-}
-
 interface FileReplacement {
   content: string;
 }
@@ -44,65 +37,23 @@ export function SimullmEditor() {
 
     async onToolCall({ toolCall }) {
       console.log("Tool call received:", toolCall);
-      if (toolCall.toolName === "editFile") {
-        // During streaming, args might be incomplete, so wait for the complete tool call
-        const data = (toolCall.args || toolCall.input) as
-          | EditOperation
-          | FileReplacement;
-        console.log("Applying edit:", data);
 
-        // Check if it's a full file replacement with 'content' field
+      if (toolCall.toolName === "editFile" && toolCall.input) {
+        const data = toolCall.input as FileReplacement;
+        console.log("Applying file edit:", data);
+
         if (data && "content" in data && typeof data.content === "string") {
           console.log("Applying full file replacement");
           setCurrentCode(data.content);
         }
-        // Otherwise check if it's a line-based edit
-        else if (
-          data &&
-          "startLine" in data &&
-          typeof data.startLine === "number" &&
-          typeof data.endLine === "number" &&
-          data.replacement
-        ) {
-          console.log("Applying line-based edit");
-          applyEdit(data);
-        } else {
-          console.log("Tool call incomplete, waiting for more data...");
-        }
       }
     },
-    onFinish: (message) => {
-      console.log("Message finished:", message);
 
-      // Handle completed tool calls in AI SDK v5 format
-      if (message.parts) {
-        for (const part of message.parts) {
-          if (part.type === "tool-editFile" && part.input) {
-            const data = part.input as EditOperation | FileReplacement;
-            console.log("Applying edit from finished message:", data);
-
-            // Check if it's a full file replacement with 'content' field
-            if (data && "content" in data && typeof data.content === "string") {
-              console.log(
-                "Applying full file replacement from finished message"
-              );
-              setCurrentCode(data.content);
-            }
-            // Otherwise check if it's a line-based edit
-            else if (
-              data &&
-              "startLine" in data &&
-              typeof data.startLine === "number" &&
-              typeof data.endLine === "number" &&
-              data.replacement
-            ) {
-              console.log("Applying line-based edit from finished message");
-              applyEdit(data);
-            }
-          }
-        }
-      }
+    onFinish: (result) => {
+      console.log("Message finished:", result);
+      // Tool calls are handled in onToolCall callback
     },
+
     onError: (error) => {
       console.error("Chat error:", error);
     },
@@ -118,30 +69,6 @@ export function SimullmEditor() {
 
   console.log("Current messages:", messages);
   console.log("Status:", status);
-
-  const applyEdit = (edit: EditOperation) => {
-    const lines = currentCode.split("\n");
-
-    // Convert to 0-based indexing
-    const startIdx = edit.startLine - 1;
-    const endIdx = edit.endLine - 1;
-
-    // Validate line numbers
-    if (startIdx < 0 || endIdx >= lines.length || startIdx > endIdx) {
-      console.error("Invalid line numbers for edit:", edit);
-      return;
-    }
-
-    // Apply the replacement
-    const replacementLines = edit.replacement.split("\n");
-    const newLines = [
-      ...lines.slice(0, startIdx),
-      ...replacementLines,
-      ...lines.slice(endIdx + 1),
-    ];
-
-    setCurrentCode(newLines.join("\n"));
-  };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(currentCode);
@@ -191,7 +118,7 @@ export function SimullmEditor() {
                 }`}
               >
                 <div className="whitespace-pre-wrap">
-                  {message.parts.map((part: any, index: number) =>
+                  {message.parts.map((part, index) =>
                     part.type === "text" ? (
                       <span key={index}>{part.text}</span>
                     ) : null
@@ -199,32 +126,21 @@ export function SimullmEditor() {
                 </div>
 
                 {/* Show tool calls */}
-                {message.toolInvocations?.map((tool: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm"
-                  >
-                    <div className="font-medium">
-                      🔧 Tool Call: {tool.toolName}
+                {message.parts &&
+                  message.parts.some(
+                    (part) => part.type === "tool-editFile"
+                  ) && (
+                    <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                      <div className="font-medium">
+                        🔧 Tool executed successfully
+                      </div>
                     </div>
-                    {tool.args && (
-                      <div className="text-xs mt-1">
-                        Lines {tool.args.startLine}-{tool.args.endLine}:{" "}
-                        {tool.args.reasoning}
-                      </div>
-                    )}
-                    {tool.result && (
-                      <div className="mt-1 p-1 bg-green-100 dark:bg-green-800 rounded text-xs">
-                        ✅ {tool.result}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )}
               </div>
             </div>
           ))}
 
-          {status === "in_progress" && (
+          {status === "streaming" && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2">
                 <div className="flex items-center space-x-2">
@@ -249,11 +165,11 @@ export function SimullmEditor() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Describe what simulation you want to create..."
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              disabled={status === "in_progress"}
+              disabled={status === "streaming"}
             />
             <button
               type="submit"
-              disabled={status === "in_progress"}
+              disabled={status === "streaming"}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Send

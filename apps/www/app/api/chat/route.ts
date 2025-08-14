@@ -1,47 +1,70 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamText, convertToModelMessages, UIMessage } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
+import { streamText, convertToModelMessages, UIMessage, tool, Tool } from "ai";
 import { z } from "zod";
-import { getSystemPrompt } from "@/lib/system-prompt";
+// import { getSystemPrompt } from "@simullm/codegen";
 
-const EditFileSchema = z.object({
-  startLine: z.number().min(1).describe("The starting line number (1-based)"),
-  endLine: z.number().min(1).describe("The ending line number (1-based)"),
-  replacement: z.string().describe("The replacement code content"),
+// Define the tool schema for file editing
+const WriteFileSchema = z.object({
+  content: z
+    .string()
+    .describe("The complete file content to write (replaces entire file)"),
   reasoning: z
     .string()
-    .describe("Brief explanation of why this edit is being made"),
+    .describe("Brief explanation of why this file is being written"),
 });
 
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+// Define custom UIMessage type for better type safety
+export type SimullmUIMessage = UIMessage<
+  Record<string, never>,
+  Record<string, never>,
+  { editFile: any }
+>;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-
-  console.log("Received messages:", messages);
-
-  const systemPrompt = getSystemPrompt();
-
   try {
-    const result = streamText({
-      model: openrouter("anthropic/claude-3.5-sonnet"),
+    const { messages }: { messages: UIMessage[] } = await req.json();
+
+    console.log("Received messages:", messages);
+
+    const systemPrompt = `xxx`;
+
+    const result = streamText<SimullmUIMessage>({
+      model: anthropic("claude-sonnet-4-20250514"),
       system: systemPrompt,
       messages: convertToModelMessages(messages),
       tools: {
-        editFile: {
+        editFile: tool({
           description:
-            "Edit specific lines in the simullm source file with replacement code",
-          parameters: EditFileSchema,
-        },
+            "Write the entire simullm source file by replacing all contents with the provided code",
+          parameters: WriteFileSchema,
+          execute: async ({ content, reasoning }) => {
+            // In a real app, you'd write this to a file
+            // For now, we'll just return a success message
+            console.log(`File updated: ${reasoning}`);
+            return {
+              success: true,
+              message: `File successfully updated: ${reasoning}`,
+              contentLength: content.length,
+            };
+          },
+        }),
       },
       toolChoice: "auto",
       temperature: 0.1,
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
+      onFinish: ({ messages, responseMessage }) => {
+        console.log("Chat finished, final messages:", messages);
+        console.log("Response message:", responseMessage);
+      },
+    });
   } catch (error) {
     console.error("Chat API error:", error);
-    return new Response("Internal server error", { status: 500 });
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
