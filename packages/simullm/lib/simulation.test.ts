@@ -657,7 +657,7 @@ describe("ABM Framework", () => {
                     
                     context.updateInternalState(state => ({
                       ...state,
-                      taskQueue: state.taskQueue.filter((_, index) => index >= availableWorkers.length)
+                      taskQueue: state.taskQueue.filter((_: string, index: number) => index >= availableWorkers.length)
                     }));
                   }
                 }
