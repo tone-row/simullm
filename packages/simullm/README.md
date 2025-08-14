@@ -72,6 +72,7 @@ Agents are reactive entities that respond to actions. They can:
 - Update their own internal state  
 - Dispatch new actions
 - Maintain memory across turns
+- Coordinate with other agents via `context.allAgents`
 
 ### Actions
 Actions are messages passed through the system. All agents receive every action and can choose to respond.
@@ -139,6 +140,7 @@ Creates a new agent.
 ### `EventSimulation` Methods
 
 - `dispatch(action)` - Dispatch an action to all agents
+- `exit()` - Returns a promise that resolves when simulation exits
 - `getGlobalState()` - Get current global state
 - `getAgentInternalState(agentId)` - Get agent's internal state
 - `getAllAgentStates()` - Get all agent internal states
@@ -146,6 +148,52 @@ Creates a new agent.
 - `hasSimulationExited()` - Check if simulation has terminated
 
 ## Advanced Usage
+
+### Agent Context Properties
+
+Each agent receives a context object with:
+
+- `globalState` - Current global state (read-only)
+- `internalState` - Agent's private state (read-only) 
+- `allAgents` - Array of all agents with their IDs and internal states
+- `dispatch(action)` - Dispatch new actions
+- `updateGlobalState(updater)` - Modify global state
+- `updateInternalState(updater)` - Modify agent's internal state
+
+### Agent Coordination
+
+Use `context.allAgents` to coordinate between agents:
+
+```typescript
+const coordinator = createAgent("coordinator", (action, context) => {
+  // Find available workers
+  const availableWorkers = context.allAgents
+    .filter(agent => agent.id !== "coordinator" && !agent.internalState?.busy)
+    .map(agent => agent.id);
+  
+  // Assign tasks to available workers
+  availableWorkers.forEach(workerId => {
+    context.dispatch({ type: "ASSIGN_TASK", agentId: workerId });
+  });
+});
+```
+
+### Waiting for Simulation Completion
+
+Use the `exit()` method to wait for simulations to complete:
+
+```typescript
+// Start simulation
+simulation.dispatch({ type: "START" });
+
+// Wait for completion
+await simulation.exit();
+
+console.log("Simulation completed!");
+console.log("Final state:", simulation.getGlobalState());
+```
+
+### Examples
 
 See the `/experiments` directory for complete examples:
 - Counter simulation with turn-based agents

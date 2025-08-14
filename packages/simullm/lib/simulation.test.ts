@@ -586,6 +586,179 @@ describe("ABM Framework", () => {
             "Alice message 3"
           ]);
         });
+
+        describe("Agent Coordination", () => {
+          it("should provide allAgents in context for coordination", async () => {
+            interface CoordinationState {
+              role: string;
+              status: string;
+            }
+
+            let capturedAllAgents: any = null;
+
+            const coordinator = createAgent<number, TestAction, CoordinationState>(
+              "coordinator",
+              (action, context) => {
+                if (action.type === "START") {
+                  capturedAllAgents = context.allAgents;
+                  context.updateInternalState(state => ({ ...state, status: "coordinating" }));
+                }
+              },
+              { role: "leader", status: "idle" }
+            );
+
+            const worker1 = createAgent<number, TestAction, CoordinationState>(
+              "worker1", 
+              (action, context) => {},
+              { role: "worker", status: "waiting" }
+            );
+
+            const worker2 = createAgent<number, TestAction, CoordinationState>(
+              "worker2",
+              (action, context) => {},
+              { role: "worker", status: "ready" }
+            );
+
+            const simulation = createSimulation<number, TestAction>({
+              initialGlobalState: 0,
+              agents: [coordinator, worker1, worker2],
+              shouldExit: ({ actionCount }) => actionCount >= 1,
+            });
+
+            await simulation.dispatch({ type: "START" });
+
+            expect(capturedAllAgents).toEqual([
+              { id: "coordinator", internalState: { role: "leader", status: "idle" } },
+              { id: "worker1", internalState: { role: "worker", status: "waiting" } },
+              { id: "worker2", internalState: { role: "worker", status: "ready" } },
+            ]);
+          });
+
+          it("should allow agents to coordinate based on other agents' states", async () => {
+            interface TaskState {
+              taskQueue: string[];
+              isWorking: boolean;
+            }
+
+            const taskDispatcher = createAgent<number, TestAction, TaskState>(
+              "dispatcher",
+              (action, context) => {
+                if (action.type === "START") {
+                  // Find available workers based on their internal states
+                  const availableWorkers = context.allAgents
+                    .filter(agent => agent.id !== "dispatcher" && !agent.internalState?.isWorking)
+                    .map(agent => agent.id);
+
+                  if (availableWorkers.length > 0) {
+                    // Assign tasks to available workers
+                    availableWorkers.forEach(workerId => {
+                      context.dispatch({ type: "COMPLETED", agentId: workerId });
+                    });
+                    
+                    context.updateInternalState(state => ({
+                      ...state,
+                      taskQueue: state.taskQueue.filter((_, index) => index >= availableWorkers.length)
+                    }));
+                  }
+                }
+              },
+              { taskQueue: ["task1", "task2", "task3"], isWorking: false }
+            );
+
+            const worker1 = createAgent<number, TestAction, TaskState>(
+              "worker1",
+              (action, context) => {
+                if (action.type === "COMPLETED" && action.agentId === "worker1") {
+                  context.updateInternalState(state => ({ ...state, isWorking: true }));
+                  context.updateGlobalState(state => state + 1);
+                }
+              },
+              { taskQueue: [], isWorking: false }
+            );
+
+            const worker2 = createAgent<number, TestAction, TaskState>(
+              "worker2", 
+              (action, context) => {
+                if (action.type === "COMPLETED" && action.agentId === "worker2") {
+                  context.updateInternalState(state => ({ ...state, isWorking: true }));
+                  context.updateGlobalState(state => state + 1);
+                }
+              },
+              { taskQueue: [], isWorking: true } // Already working
+            );
+
+            const simulation = createSimulation<number, TestAction>({
+              initialGlobalState: 0,
+              agents: [taskDispatcher, worker1, worker2],
+              shouldExit: ({ actionCount }) => actionCount >= 5,
+            });
+
+            await simulation.dispatch({ type: "START" });
+
+            // Only worker1 should have been assigned a task (worker2 was already working)
+            expect(simulation.getGlobalState()).toBe(1);
+            expect(simulation.getAgentInternalState("worker1").isWorking).toBe(true);
+            expect(simulation.getAgentInternalState("worker2").isWorking).toBe(true);
+            
+            // Task queue should be reduced by 1 (only worker1 got a task)
+            expect(simulation.getAgentInternalState("dispatcher").taskQueue).toEqual(["task2", "task3"]);
+          });
+
+          it("should provide consistent allAgents state across action processing", async () => {
+            let allAgentsSnapshots: any[] = [];
+
+            const observer = createAgent<number, TestAction>(
+              "observer",
+              (action, context) => {
+                // Capture allAgents state at each action
+                allAgentsSnapshots.push(JSON.parse(JSON.stringify(context.allAgents)));
+                
+                if (action.type === "START") {
+                  context.dispatch({ type: "INCREMENT", amount: 1 });
+                }
+              }
+            );
+
+            const counter = createAgent<number, TestAction, { count: number }>(
+              "counter",
+              (action, context) => {
+                // Capture allAgents state when this agent processes actions
+                if (action.type === "INCREMENT") {
+                  allAgentsSnapshots.push(JSON.parse(JSON.stringify(context.allAgents)));
+                  context.updateInternalState(state => ({ count: state.count + action.amount }));
+                  context.updateGlobalState(state => state + action.amount);
+                }
+              },
+              { count: 0 }
+            );
+
+            const simulation = createSimulation<number, TestAction>({
+              initialGlobalState: 0,
+              agents: [observer, counter],
+              shouldExit: ({ actionCount }) => actionCount >= 2,
+            });
+
+            await simulation.dispatch({ type: "START" });
+
+            // Should have captured 3 snapshots:
+            // 1. Observer during START action
+            // 2. Counter during START action  
+            // 3. Counter during INCREMENT action
+            expect(allAgentsSnapshots).toHaveLength(3);
+
+            // All snapshots should show counter with initial state (0)
+            // because allAgents reflects state at the START of each action processing
+            allAgentsSnapshots.forEach(snapshot => {
+              expect(snapshot).toContainEqual({
+                id: "counter", 
+                internalState: { count: 0 }
+              });
+            });
+
+            // But after actions are processed, the counter's state should be updated
+            expect(simulation.getAgentInternalState("counter")).toEqual({ count: 1 });
+          });
+        });
       });
     });
   });

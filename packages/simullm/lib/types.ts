@@ -9,6 +9,10 @@ export interface Context<TGlobalState, TAction> {
   updateGlobalState: (updater: (state: TGlobalState) => TGlobalState) => void;
   updateInternalState: (updater: (state: any) => any) => void;
   internalState: any;
+  allAgents: Array<{
+    id: string;
+    internalState: any;
+  }>;
 }
 
 /**

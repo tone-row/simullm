@@ -118,6 +118,10 @@ export class EventSimulation<TGlobalState, TAction> {
         this.agentInternalStates.set(agentId, newState);
       },
       internalState: this.agentInternalStates.get(agentId),
+      allAgents: Array.from(this.agents.keys()).map(id => ({
+        id,
+        internalState: this.agentInternalStates.get(id),
+      })),
     };
   }
 
