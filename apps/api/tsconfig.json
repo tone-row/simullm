@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "lib": ["ES2022"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -14,8 +14,11 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "rootDir": "./",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@simullm/codegen": ["../../packages/codegen/src"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

@@ -9,6 +9,12 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.3",
+    "@simullm/codegen": "*",
+    "ai": "^5.0.11",
+    "zod": "^4.0.17"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@vercel/node": "^3.0.0",
