@@ -1,0 +1,39 @@
+{
+  "name": "create-simullm",
+  "version": "0.1.0",
+  "description": "Create a new SimulLM simulation project",
+  "bin": {
+    "create-simullm": "./dist/bin/create-simullm.js"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && cp -r src/templates dist/",
+    "dev": "tsc --watch",
+    "start": "node dist/bin/create-simullm.js"
+  },
+  "files": [
+    "dist/**/*",
+    "templates/**/*"
+  ],
+  "keywords": [
+    "cli",
+    "create",
+    "simullm",
+    "simulation",
+    "llm"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@clack/core": "^0.3.4",
+    "@clack/prompts": "^0.7.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

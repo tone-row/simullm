@@ -173,10 +173,3 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
-
-# Temporary testing files
-tmp/
-TODO.md
-
-# Presentation dashboards
-presentations/TODO.md

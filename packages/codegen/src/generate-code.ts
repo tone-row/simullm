@@ -32,3 +32,8 @@ generateCodeGoal.test("tiny", {
   simulationDescription:
     "Create the smallest possible simulation to show me how the framework works",
 });
+
+generateCodeGoal.test("dnd-game", {
+  simulationDescription:
+    "Create the most minimal D&D game with a party of adventurers and a game master, that runs for no more than 3 rounds. Where the game master describes a situation, and then each adventurer describes what they'd like to do one at a time (round-robin style) and then the game master describes the result of the adventurers actions. and that repeats for 3 rounds.",
+});
