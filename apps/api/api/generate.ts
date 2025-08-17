@@ -1,6 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
-import { getSystemPrompt } from "@simullm/codegen";
+import { getSystemPrompt } from "../src/getSystemPrompt";
 import { z } from "zod";
 
 const generateSchema = z.object({

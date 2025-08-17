@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "dev:www": "bun --cwd apps/www dev",
     "build:www": "bun --cwd apps/www build",
+    "dev:api": "bun --cwd apps/api dev",
     "test:simullm": "bun --cwd packages/simullm test"
   },
   "keywords": [
@@ -29,6 +30,8 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.11",
-    "ai": "^5.0.11"
+    "ai": "^5.0.11",
+    "vercel": "^45.0.9",
+    "zod": "^4.0.17"
   }
 }
