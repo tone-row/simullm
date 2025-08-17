@@ -1,6 +1,6 @@
 {
   "name": "create-simullm",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Create a new SimulLM simulation project",
   "bin": {
     "create-simullm": "./dist/bin/create-simullm.js"
@@ -11,7 +11,9 @@
   "scripts": {
     "build": "tsc && cp -r src/templates dist/",
     "dev": "tsc --watch",
-    "start": "node dist/bin/create-simullm.js"
+    "start": "node dist/bin/create-simullm.js",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "files": [
     "dist/**/*",

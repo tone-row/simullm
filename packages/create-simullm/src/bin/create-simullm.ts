@@ -15,7 +15,7 @@ function checkBunInstalled(): boolean {
 }
 
 async function main() {
-  intro(`${pc.bgMagenta(pc.black(' SimuLLM '))} ${pc.magenta('✨ Welcome to create-simullm! ✨')}`);
+  intro(`${pc.bgMagenta(pc.white(' SimuLLM '))} ${pc.magenta('✨ Welcome to create-simullm! ✨')}`);
 
   if (!checkBunInstalled()) {
     outro(`
