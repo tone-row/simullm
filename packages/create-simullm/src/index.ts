@@ -53,9 +53,9 @@ async function createPackageJson(projectPath: string, projectName: string, useTy
       start: "bun run dist/index.js"
     },
     dependencies: {
-      "ai": "^3.0.0",
-      "@openrouter/ai-sdk-provider": "^0.0.5",
-      "zod": "^3.22.0",
+      "ai": "^5.0.11",
+      "@openrouter/ai-sdk-provider": "^1.1.2",
+      "zod": "^4.0.17",
       "simullm": "latest"
     },
     ...(useTypeScript && {
