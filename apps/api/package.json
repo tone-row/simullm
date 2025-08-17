@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Serverless API for SimuLLM services",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "build": "tsc --noEmit",
