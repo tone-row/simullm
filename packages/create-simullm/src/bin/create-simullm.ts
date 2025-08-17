@@ -3,7 +3,7 @@
 import { intro, outro, text, select, spinner, note } from '@clack/prompts';
 import { createSimulation, createCustomSimulation } from '../index.js';
 import { execSync } from 'child_process';
-import * as pc from 'picocolors';
+import pc from 'picocolors';
 
 function checkBunInstalled(): boolean {
   try {
