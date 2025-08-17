@@ -1,8 +1,9 @@
-import { mkdir, writeFile, readFile } from 'fs/promises';
+import { mkdir, writeFile, readFile, access, copyFile } from 'fs/promises';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,7 +33,7 @@ export async function createSimulation(options: CreateSimulationOptions) {
   
   await createProjectStructure(projectPath, template, useTypeScript);
   
-  await createEnvFile(projectPath);
+  const envResult = await createEnvFile(projectPath);
   
   await createGitignore(projectPath);
   
@@ -40,6 +41,8 @@ export async function createSimulation(options: CreateSimulationOptions) {
     process.chdir(projectPath);
     execSync('bun install', { stdio: 'inherit' });
   }
+
+  return { envResult };
 }
 
 async function createPackageJson(projectPath: string, projectName: string, useTypeScript: boolean) {
@@ -73,11 +76,23 @@ async function createPackageJson(projectPath: string, projectName: string, useTy
 }
 
 async function createEnvFile(projectPath: string) {
-  const envContent = `# OpenRouter API Key - Get yours at https://openrouter.ai/settings/keys
+  const envPath = join(projectPath, '.env');
+  
+  // Try to copy .env.simullm from user's home directory
+  const homeEnvPath = join(homedir(), '.env.simullm');
+  
+  try {
+    await access(homeEnvPath);
+    await copyFile(homeEnvPath, envPath);
+    return { copied: true, from: homeEnvPath };
+  } catch {
+    // If .env.simullm doesn't exist, create default .env
+    const envContent = `# OpenRouter API Key - Get yours at https://openrouter.ai/settings/keys
 OPENROUTER_API_KEY=
 `;
-
-  await writeFile(join(projectPath, '.env'), envContent);
+    await writeFile(envPath, envContent);
+    return { copied: false };
+  }
 }
 
 async function createGitignore(projectPath: string) {
@@ -251,7 +266,7 @@ export async function createCustomSimulation(options: CreateCustomSimulationOpti
   // Create basic project structure first
   await mkdir(projectPath, { recursive: true });
   await createPackageJson(projectPath, projectName, useTypeScript);
-  await createEnvFile(projectPath);
+  const envResult = await createEnvFile(projectPath);
   await createGitignore(projectPath);
   
   // Generate custom simulation code using our API
@@ -264,6 +279,8 @@ export async function createCustomSimulation(options: CreateCustomSimulationOpti
     process.chdir(projectPath);
     execSync('bun install', { stdio: 'inherit' });
   }
+
+  return { envResult };
 }
 
 async function generateSimulationCode(description: string): Promise<string> {

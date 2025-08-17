@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { intro, outro, text, select, spinner } from '@clack/prompts';
+import { intro, outro, text, select, spinner, note } from '@clack/prompts';
 import { createSimulation, createCustomSimulation } from '../index.js';
 import { execSync } from 'child_process';
+import * as pc from 'picocolors';
 
 function checkBunInstalled(): boolean {
   try {
@@ -14,7 +15,7 @@ function checkBunInstalled(): boolean {
 }
 
 async function main() {
-  intro('🚀 Welcome to create-simullm!');
+  intro(`${pc.bgMagenta(pc.black(' SimuLLM '))} ${pc.magenta('✨ Welcome to create-simullm! ✨')}`);
 
   if (!checkBunInstalled()) {
     outro(`
@@ -29,7 +30,7 @@ Then try again!
   }
 
   const projectName = await text({
-    message: 'What is your project name?',
+    message: pc.cyan('What is your project name?'),
     placeholder: 'my-simulation',
     validate: (value) => {
       if (!value) return 'Project name is required';
@@ -45,11 +46,11 @@ Then try again!
   }
 
   const template = await select({
-    message: 'Which template would you like to use?',
+    message: pc.cyan('Which template would you like to use?'),
     options: [
-      { value: 'basic', label: 'Basic Simulation', hint: 'Simple example to get started' },
-      { value: 'dnd', label: 'D&D Adventure', hint: 'Multi-agent D&D game simulation' },
-      { value: 'custom', label: 'Custom AI-Generated', hint: 'Describe your simulation and let AI generate it' }
+      { value: 'basic', label: `${pc.green('🟢')} Basic Simulation`, hint: 'Simple example to get started' },
+      { value: 'dnd', label: `${pc.red('🎲')} D&D Adventure`, hint: 'Multi-agent D&D game simulation' },
+      { value: 'custom', label: `${pc.magenta('🤖')} Custom AI-Generated`, hint: 'Describe your simulation and let AI generate it' }
     ]
   });
 
@@ -61,7 +62,7 @@ Then try again!
   let customDescription = '';
   if (template === 'custom') {
     customDescription = await text({
-      message: 'Describe your simulation in detail:',
+      message: pc.cyan('🎨 Describe your simulation in detail:'),
       placeholder: 'A simulation of birds flocking together, avoiding predators while searching for food in a forest environment...',
       validate: (value) => {
         if (!value || value.length < 10) {
@@ -82,39 +83,55 @@ Then try again!
     if (template === 'custom') {
       s.start('🤖 Generating your custom simulation with AI...');
       
-      await createCustomSimulation({
+      // Show helpful tip during generation
+      note(pc.dim(`💡 ${pc.cyan('Tip:')} Create a ${pc.yellow('~/.env.simullm')} file with your OPENROUTER_API_KEY\n   to automatically copy it to all new projects!`), 'Pro Tip');
+      
+      const result = await createCustomSimulation({
         projectName,
         description: customDescription,
         useTypeScript: true,
         installDeps: true
       });
-    } else {
-      s.start('Creating your SimulLM project...');
       
-      await createSimulation({
+      s.stop(`${pc.green('✅')} Custom simulation generated successfully!`);
+      
+      // Show env file status
+      if (result.envResult.copied) {
+        note(pc.green(`🔑 Copied API key from ~/.env.simullm`), 'Environment');
+      } else {
+        note(pc.yellow(`⚠️  Remember to add your OPENROUTER_API_KEY to .env`), 'Environment');
+      }
+    } else {
+      s.start(`${pc.cyan('🚀')} Creating your SimuLLM project...`);
+      
+      const result = await createSimulation({
         projectName,
         template: template as string,
         useTypeScript: true,
         installDeps: true
       });
+      
+      s.stop(`${pc.green('✅')} Project created successfully!`);
+      
+      // Show env file status
+      if (result.envResult.copied) {
+        note(pc.green(`🔑 Copied API key from ~/.env.simullm`), 'Environment');
+      }
     }
-
-    s.stop('✅ Project created successfully!');
     
-    outro(`
-🎉 Your SimulLM simulation is ready!
+    outro(`${pc.magenta('🎉 Your SimuLLM simulation is ready!')}
 
-Next steps:
-  1. cd ${projectName}
-  2. Add your OpenRouter API key to .env file
-     Get your API key: https://openrouter.ai/settings/keys
-  3. bun run dev
+${pc.cyan('Next steps:')}
+  ${pc.green('1.')} ${pc.bold(`cd ${projectName}`)}
+  ${pc.green('2.')} ${pc.bold('bun run dev')} ${pc.dim('(to start your simulation)')}
 
-Happy simulating! 🤖
-    `);
+${pc.dim('📚 Need an API key?')} ${pc.blue('https://openrouter.ai/settings/keys')}
+${pc.dim('💡 Save time:')} Create ${pc.yellow('~/.env.simullm')} with your key for future projects
+
+${pc.magenta('Happy simulating!')} ${pc.yellow('🤖✨')}`);
   } catch (error) {
-    s.stop('❌ Failed to create project');
-    console.error('Error:', error instanceof Error ? error.message : error);
+    s.stop(`${pc.red('❌')} Failed to create project`);
+    console.error(`${pc.red('Error:')} ${error instanceof Error ? error.message : error}`);
     process.exit(1);
   }
 }
