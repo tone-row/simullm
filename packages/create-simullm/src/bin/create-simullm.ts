@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { intro, outro, text, select, spinner } from '@clack/prompts';
-import { createSimulation } from '../index.js';
+import { createSimulation, createCustomSimulation } from '../index.js';
 import { execSync } from 'child_process';
 
 function checkBunInstalled(): boolean {
@@ -48,7 +48,8 @@ Then try again!
     message: 'Which template would you like to use?',
     options: [
       { value: 'basic', label: 'Basic Simulation', hint: 'Simple example to get started' },
-      { value: 'dnd', label: 'D&D Adventure', hint: 'Multi-agent D&D game simulation' }
+      { value: 'dnd', label: 'D&D Adventure', hint: 'Multi-agent D&D game simulation' },
+      { value: 'custom', label: 'Custom AI-Generated', hint: 'Describe your simulation and let AI generate it' }
     ]
   });
 
@@ -57,16 +58,46 @@ Then try again!
     process.exit(0);
   }
 
-  const s = spinner();
-  s.start('Creating your SimulLM project...');
+  let customDescription = '';
+  if (template === 'custom') {
+    customDescription = await text({
+      message: 'Describe your simulation in detail:',
+      placeholder: 'A simulation of birds flocking together, avoiding predators while searching for food in a forest environment...',
+      validate: (value) => {
+        if (!value || value.length < 10) {
+          return 'Please provide a detailed description (at least 10 characters)';
+        }
+      }
+    }) as string;
 
+    if (typeof customDescription === 'symbol') {
+      outro('❌ Operation cancelled');
+      process.exit(0);
+    }
+  }
+
+  const s = spinner();
+  
   try {
-    await createSimulation({
-      projectName,
-      template: template as string,
-      useTypeScript: true,
-      installDeps: true
-    });
+    if (template === 'custom') {
+      s.start('🤖 Generating your custom simulation with AI...');
+      
+      await createCustomSimulation({
+        projectName,
+        description: customDescription,
+        useTypeScript: true,
+        installDeps: true
+      });
+    } else {
+      s.start('Creating your SimulLM project...');
+      
+      await createSimulation({
+        projectName,
+        template: template as string,
+        useTypeScript: true,
+        installDeps: true
+      });
+    }
 
     s.stop('✅ Project created successfully!');
     
@@ -83,7 +114,7 @@ Happy simulating! 🤖
     `);
   } catch (error) {
     s.stop('❌ Failed to create project');
-    console.error(error);
+    console.error('Error:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

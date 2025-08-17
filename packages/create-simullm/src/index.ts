@@ -14,6 +14,13 @@ export interface CreateSimulationOptions {
   installDeps: boolean;
 }
 
+export interface CreateCustomSimulationOptions {
+  projectName: string;
+  description: string;
+  useTypeScript: boolean;
+  installDeps: boolean;
+}
+
 export async function createSimulation(options: CreateSimulationOptions) {
   const { projectName, template, useTypeScript, installDeps } = options;
   
@@ -234,4 +241,78 @@ const simulation = new Simulation({
 console.log('Starting custom simulation...');
 simulation.run();
 `;
+}
+
+export async function createCustomSimulation(options: CreateCustomSimulationOptions) {
+  const { projectName, description, useTypeScript, installDeps } = options;
+  
+  const projectPath = join(process.cwd(), projectName);
+  
+  // Create basic project structure first
+  await mkdir(projectPath, { recursive: true });
+  await createPackageJson(projectPath, projectName, useTypeScript);
+  await createEnvFile(projectPath);
+  await createGitignore(projectPath);
+  
+  // Generate custom simulation code using our API
+  const generatedCode = await generateSimulationCode(description);
+  
+  // Create project structure with generated code
+  await createCustomProjectStructure(projectPath, generatedCode, useTypeScript);
+  
+  if (installDeps) {
+    process.chdir(projectPath);
+    execSync('bun install', { stdio: 'inherit' });
+  }
+}
+
+async function generateSimulationCode(description: string): Promise<string> {
+  try {
+    const response = await fetch('https://simullm-api.vercel.app/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ description }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json() as { code: string };
+    return data.code;
+  } catch (error) {
+    throw new Error(`Failed to generate simulation code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function createCustomProjectStructure(projectPath: string, generatedCode: string, useTypeScript: boolean) {
+  const srcDir = join(projectPath, 'src');
+  await mkdir(srcDir, { recursive: true });
+
+  const extension = useTypeScript ? 'ts' : 'js';
+  const indexFile = join(srcDir, `index.${extension}`);
+
+  await writeFile(indexFile, generatedCode);
+
+  if (useTypeScript) {
+    await writeFile(
+      join(projectPath, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "bundler",
+          allowImportingTsExtensions: true,
+          allowSyntheticDefaultImports: true,
+          strict: true,
+          skipLibCheck: true,
+          outDir: "dist"
+        },
+        include: ["src/**/*"],
+        exclude: ["node_modules", "dist"]
+      }, null, 2)
+    );
+  }
 }
